@@ -1,0 +1,29 @@
+{
+  "image_name": "es-tv-mc-m-teaser.png",
+  "image_size": {
+    "height": 607,
+    "width": 1083,
+    "channels": 3
+  },
+  "total_grains": 23,
+  "processing_time": 36.18275594711304,
+  "processing_date": "2026-01-07 21:55:50",
+  "total_area": 352930.0,
+  "average_area": 15344.782608695652,
+  "min_area": 472.0,
+  "max_area": 144579.0,
+  "average_major_axis_length": 194.10442900660743,
+  "average_minor_axis_length": 68.01489966308816,
+  "scale_detection": {
+    "success": true,
+    "scale_factor_um_per_px": 16.39344262295082,
+    "known_length_um": 1000.0
+  },
+  "real_area_statistics": {
+    "total_area_um2": 94848159.09701692,
+    "average_area_um2": 4123833.0042181266,
+    "min_area_um2": 126847.62160709484,
+    "max_area_um2": 38854877.72104272,
+    "average_diameter_um": 1563.1850282973664
+  }
+}

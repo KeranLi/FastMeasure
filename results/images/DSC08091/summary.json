@@ -1,0 +1,17 @@
+{
+  "image_name": "DSC08091.JPG",
+  "image_size": {
+    "height": 3648,
+    "width": 5472,
+    "channels": 3
+  },
+  "total_grains": 6,
+  "processing_time": 90.39238357543945,
+  "processing_date": "2026-01-07 22:08:59",
+  "total_area": 4275985.0,
+  "average_area": 712664.1666666666,
+  "min_area": 97812.0,
+  "max_area": 3131791.0,
+  "average_major_axis_length": 1449.9106479509712,
+  "average_minor_axis_length": 534.782087064253
+}
