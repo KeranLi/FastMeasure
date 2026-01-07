@@ -1,0 +1,3 @@
+[submodule "efficientsam3"]
+	path = efficientsam3
+	url = https://github.com/SimonZeng7108/efficientsam3.git

@@ -4,10 +4,10 @@
 文件名：run.py
 功能：提供命令行接口启动岩石分割系统
 使用方式：
-  1. 单张图片：python run.py --input 图片路径
-  2. 批量处理：python run.py --input 文件夹路径 --batch
-  3. 交互模式：python run.py --interactive
-  4. 显示帮助：python run.py --help
+  1. 单张图片: python run.py --input 图片路径
+  2. 批量处理: python run.py --input 文件夹路径 --batch
+  3. 交互模式: python run.py --interactive
+  4. 显示帮助: python run.py --help
 """
 
 import os
