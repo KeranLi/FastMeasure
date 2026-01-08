@@ -7,7 +7,12 @@ model = FastSAM("./models/FastSAM-s.pt")  # 或 FastSAM-x.pt
 
 # Process image and predict
 source = "es-tv-mc-m-teaser.png"
-everything_results = model(source, device="0", retina_masks=True, imgsz=1024, conf=0.4, iou=0.9)
+
+# CPU
+everything_results = model(source, device="cpu", retina_masks=True, imgsz=1024, conf=0.4, iou=0.9)
+
+# GPU
+#everything_results = model(source, device="0", retina_masks=True, imgsz=1024, conf=0.4, iou=0.9)
 
 # 处理结果列表
 for result in everything_results:
