@@ -1,18 +1,18 @@
-# 这里我准备测试FastSAM(https://github.com/CASIA-LMC-Lab/FastSAM)
-from ultralytics import FastSAM
+# 这里我准备测试MobileSAM
+from ultralytics import SAM
 import matplotlib.pyplot as plt
 
 # Load model
-model = FastSAM("./models/FastSAM-s.pt")  # 或 FastSAM-x.pt
+model = SAM("./models/mobile_sam.pt")
 
 # Process image and predict
 source = "es-tv-mc-m-teaser.png"
 
 # CPU
-everything_results = model(source, device="cpu", retina_masks=True, imgsz=1024, conf=0.4, iou=0.9)
+#everything_results = model(source, device="cpu", retina_masks=True, imgsz=1024, conf=0.4, iou=0.9)
 
 # GPU
-#everything_results = model(source, device="0", retina_masks=True, imgsz=1024, conf=0.4, iou=0.9)
+everything_results = model(source, device="0", retina_masks=True, imgsz=1024, conf=0.4, iou=0.9)
 
 # 处理结果列表
 for result in everything_results:
