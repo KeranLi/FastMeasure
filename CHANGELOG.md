@@ -40,9 +40,18 @@
 
 ### Added
 
-- 加入FastSAM的测试脚本fastsam_inference_test.py
-。
+- 加入FastSAM的测试脚本fastsam_inference_test.py。
 
 ### Known Issues
 
-- 单图下，CPU推理时间是GPU的4倍数(97.8/405.9/379.5ms in preprocess/inference/postprocess vs.61.1/102.1/68.0. Device=RTX 3060)
+- 单图下，CPU推理时间是GPU的4倍数(97.8/405.9/379.5 ms in preprocess/inference/postprocess vs.61.1/102.1/68.0 ms, Device=RTX 3060)
+
+## [1.0.0] - 2026-01-09
+
+### Added
+
+- 加入MoblieSAM的测试脚本mobilesam_inference_test.py。
+
+### Known Issues
+
+- 单图下，CPU推理时间是GPU的4倍数(11.5/101268.9/303.8ms in preprocess/inference/postprocess vs.128.7/3760.7/5.1 ms, Device=RTX 3060)
