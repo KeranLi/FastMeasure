@@ -1,7 +1,7 @@
 """
-岩石颗粒自动分割与统计系统 - 核心主程序（集成比例尺功能）
-文件名：rock.py
-功能：批量处理岩石显微图像，自动检测、分割并统计颗粒信息
+Rock Particle Automatic Segmentation and Statistics System - Core Main Program (Integrated with Scale Function)
+File Name: rock.py
+Function: Batch process rock microscopic images, automatically detect, segment and statistically analyze particle information
 """
 
 import os
@@ -21,7 +21,7 @@ import pandas as pd
 from PIL import Image, ImageFile
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from ultralytics import YOLO
+from ultralytics import YOLO, SAM
 from segment_anything import sam_model_registry, SamPredictor
 
 # 导入比例尺检测模块

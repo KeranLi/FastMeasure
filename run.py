@@ -20,7 +20,8 @@ current_dir = Path(__file__).parent
 sys.path.insert(0, str(current_dir))
 
 # 导入岩石分割系统
-from rock import RockSegmentationSystem
+#from rock import RockSegmentationSystem
+from rock_new import RockSegmentationSystem
 
 
 def parse_arguments():
