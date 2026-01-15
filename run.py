@@ -21,7 +21,7 @@ sys.path.insert(0, str(current_dir))
 
 # 导入岩石分割系统
 #from rock import RockSegmentationSystem
-from rock_new import RockSegmentationSystem
+from rock import RockSegmentationSystem
 
 
 def parse_arguments():
