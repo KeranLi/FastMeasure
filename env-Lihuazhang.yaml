@@ -1,18 +1,20 @@
-# SuperFastSAM岩石颗粒自动分割系统配置文件
+# 岩石颗粒自动分割系统配置文件
 
 # ===== 模型路径配置 =====
 model_paths:
-  # YOLO模型路径（确保此文件存在）
-  yolo: "../../models/best.pt"
-  # FastSAM模型路径（确保已下载）
-  fastsam: "../../models/FastSAM-s.pt"
-  # 运行设备：cpu 或 cuda
-  device: "cpu"
+  # YOLO模型路径
+  yolo: "./models/best_yolo_20260107.pt"
+  # SAM模型路径
+  #sam: "..models/sam_vit_h_4b8939.pth"
+  sam: "./models/mobile_sam.pt"
+  # SAM模型类型（vit_h, vit_l, vit_b）
+  sam_type: "vit_h"
+  #fastsam: FastSAM-s.pt
 
 # ===== 比例尺检测配置 =====
 scale_detection:
-  enabled: true  # 是否启用比例尺检测
-  known_length_um: 1000.0  # ⚠️ 重要：图片上比例尺的实际长度（微米）
+  enabled: true  # 是否启用比例尺检测和面积换算
+  known_length_um: 1000.0  # ⚠️ 手动更改：图片上比例尺的实际长度（微米）
   
   # 检测参数（一般无需修改）
   detection_params:
@@ -28,28 +30,24 @@ scale_detection:
 
 # ===== 处理参数配置 =====
 processing:
-  # YOLO检测置信度阈值（0-1之间）
-  yolo_confidence: 0.25
-  # FastSAM置信度阈值（SuperFastSAM优化参数）
-  fastsam_confidence: 0.35
-  # 最小颗粒面积（像素数，小于此值的颗粒会被过滤）
+  # 检测置信度阈值（0-1之间，越小检测越多）
+  confidence_threshold: 0.45
+  # 最小颗粒面积（像素数，小于此值的颗粒会被过滤掉）
   min_area: 30
   # 最小检测框面积（像素数）
   min_bbox_area: 20
-  # 是否移除边缘颗粒
+  # 是否移除边缘颗粒（True/False）
   remove_edge_grains: false
   # 是否显示结果图
   plot_results: true
-  # 是否启用性能监控
-  performance_monitor: true
 
 # ===== 输出配置 =====
 output:
   # 结果根目录
-  root_dir: "results_super_fastsam"
+  root_dir: "results"
   # 是否按图片名创建子目录
   create_subdirs: true
-  # 保存可视化结果图（三张图）
+  # 保存可视化结果图
   save_visualization: true
   # 保存分割掩码
   save_mask: true
@@ -57,8 +55,6 @@ output:
   save_statistics: true
   # 保存JSON格式的汇总信息
   save_summary: true
-  # 保存性能数据
-  save_performance: true
 
 # ===== 批量处理配置 =====
 batch_processing:
@@ -66,8 +62,6 @@ batch_processing:
   supported_formats: [".tif", ".tiff", ".jpg", ".jpeg", ".png", ".bmp"]
   # 遇到损坏图片是否跳过
   skip_corrupted: true
-  # 最大工作进程数（生产环境建议1）
-  max_workers: 1
   # 是否记录错误日志
   log_errors: true
 
@@ -79,27 +73,16 @@ logging:
   save_to_file: true
   # 是否在控制台显示
   show_in_console: true
-  # 日志格式
-  log_format: "%(asctime)s - %(levelname)s - %(message)s"
 
 # ===== 颗粒标注配置 =====
 grain_labeling:
   enabled: true           # 是否启用颗粒标注
   font_size: 11          # 字体大小（建议11-14）
   text_color: "yellow"   # 文字颜色（黄色在岩石图上更醒目）
-  bg_color: ""           # 空字符串表示无背景框
+  bg_color: ""           # 🆕 空字符串表示无背景框
   show_area: true        # 是否显示面积
-  max_labels: 1000       # 密集区域最大标注数
-  min_area: 0            # 最小标注面积（0表示所有颗粒都标注）
-  text_outline: true     # 是否添加文字描边
-  outline_color: "black" # 描边颜色
-  outline_width: 2.0     # 描边宽度
-
-# ===== 性能配置 =====
-performance:
-  # 是否启用性能监控
-  enable_monitoring: true
-  # 是否保存时间统计
-  save_timings: true
-  # 报警阈值（秒）
-  alert_threshold_sec: 300
+  max_labels: 1000       # 🆕 密集区域最大标注数（设置大值以标注所有）
+  min_area: 0            # 🆕 最小标注面积（0表示所有颗粒都标注）
+  text_outline: true     # 🆕 是否添加文字描边（无背景时建议开启）
+  outline_color: "black" # 🆕 描边颜色
+  outline_width: 2.0     # 🆕 描边宽度
