@@ -30,25 +30,27 @@ from .seg_tools import ImageProcessor, FileUtils, PerformanceMonitor
 try:
     from scale_detector import ScaleDetector
     SCALE_DETECTOR_AVAILABLE = True
-    print("✅ 成功导入比例尺检测模块")
+    print("成功导入比例尺检测模块")
 except ImportError as e:
     SCALE_DETECTOR_AVAILABLE = False
-    print(f"⚠️ 导入比例尺检测模块失败: {e}")
+    print(f"导入比例尺检测模块失败: {e}")
 
 # 导入颗粒标注模块
 try:
     from grain_marker import add_grain_labels, add_labels_with_config
     GRAIN_MARKER_AVAILABLE = True
-    print("✅ 成功导入颗粒标注模块")
+    print("成功导入颗粒标注模块")
 except ImportError as e:
     GRAIN_MARKER_AVAILABLE = False
-    print(f"⚠️ 导入颗粒标注模块失败: {e}")
+    print(f"导入颗粒标注模块失败: {e}")
 
+# 导入多种几何尺寸计算函数
+from geometry.grain_metric import GrainShapeMetrics
 
 class RockUltraSystem:
     """UltraFastSAM生产级岩石分割系统"""
     
-    VERSION = "2.0.0"
+    VERSION = "1.0.0"
     
     def __init__(self, config_path: str = "config.yaml"):
         """
@@ -58,7 +60,7 @@ class RockUltraSystem:
             config_path: 配置文件路径
         """
         print("=" * 70)
-        print(f"🏭 UltraFastSAM岩石颗粒自动分割系统 v{self.VERSION}")
+        print(f"UltraFastSAM岩石颗粒自动分割系统 v{self.VERSION}")
         print("=" * 70)
         
         # 加载配置文件
@@ -101,15 +103,15 @@ class RockUltraSystem:
         
         # 如果配置文件不存在，使用默认配置
         if not config_file.exists():
-            print(f"⚠️ 配置文件 {config_path} 不存在，使用默认配置")
+            print(f"配置文件 {config_path} 不存在，使用默认配置")
             return self._get_default_config()
         
         try:
             config = FileUtils.safe_load_yaml(str(config_file), default={})
-            print(f"✅ 配置文件加载成功: {config_file}")
+            print(f"配置文件加载成功: {config_file}")
             return config
         except Exception as e:
-            print(f"❌ 配置文件加载失败: {e}")
+            print(f"配置文件加载失败: {e}")
             return self._get_default_config()
     
     def _get_default_config(self) -> Dict[str, Any]:
@@ -185,7 +187,7 @@ class RockUltraSystem:
         if scale_config.get('enabled', False) and SCALE_DETECTOR_AVAILABLE:
             try:
                 self.scale_detector = ScaleDetector(self.config)
-                self.logger.info("✅ 比例尺检测器初始化成功")
+                self.logger.info("比例尺检测器初始化成功")
             except Exception as e:
                 self.logger.warning(f"比例尺检测器初始化失败: {e}")
                 self.scale_detector = None
@@ -244,10 +246,10 @@ class RockUltraSystem:
             
             if success:
                 self.performance_monitor.end_timing('initialize_models')
-                self.logger.info("✅ AI模型初始化成功")
+                self.logger.info("AI模型初始化成功")
                 return True
             else:
-                self.logger.error("❌ AI模型初始化失败")
+                self.logger.error("AI模型初始化失败")
                 return False
                 
         except Exception as e:
@@ -297,7 +299,7 @@ class RockUltraSystem:
             if image is None:
                 result['error_message'] = "无法加载图片"
                 result['processing_time'] = self.performance_monitor.timings.get('total_processing', {}).get('elapsed', 0)
-                self.logger.error(f"❌ 图片加载失败: {image_path}")
+                self.logger.error(f"图片加载失败: {image_path}")
                 return result
             
             # 验证图像数据
@@ -305,7 +307,7 @@ class RockUltraSystem:
             if not is_valid:
                 result['error_message'] = valid_msg
                 result['processing_time'] = self.performance_monitor.timings.get('total_processing', {}).get('elapsed', 0)
-                self.logger.error(f"❌ 图像数据验证失败: {valid_msg}")
+                self.logger.error(f"图像数据验证失败: {valid_msg}")
                 return result
             
             self.performance_monitor.end_timing('image_loading')
@@ -354,6 +356,11 @@ class RockUltraSystem:
             # 更新结果
             result['grains_count'] = len(all_grains)
             result['success'] = True
+
+            # 计算颗粒的形状参数
+            #print(grain_data.columns)  # 打印列名以确认是否包含 'coordinates' 列
+            shape_calculator = GrainShapeMetrics(grain_data)  # 创建GrainShapeMetrics实例
+            grain_data = shape_calculator.compute_all_metrics()  # 计算所有形状参数
             
             # 保存结果文件
             output_files = []
