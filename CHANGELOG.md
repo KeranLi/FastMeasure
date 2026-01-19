@@ -129,5 +129,8 @@
 - fsatsam0118文件夹其实就是封装的fastsam，那么只需要和yolo封装好了以后封装成单独文件夹即可。mobile也是这个道理。同时，用户自然习惯在比0118fastsam更高一级的目录中直接使用run_xxx.py的脚本。用户运行完以后就可以直接在同一层级目录中寻找results。我已经预留好了mobilesam文件夹，这次开发可以直接参考当前fastsam的结构开发mobilesam的工具，这样其他脚本都可以直接快速复制改动。
 - 注意run_XXX.py脚本输出最好就固定不动了，检查一下，别让大语言模型每次都输出不一样哈。
 - "python run_fastsam.py --input ./Boulder_20260107/DSC08059.JPG "我只按照这个方式进行了单图像测试，CPU上效果也很好，目前先用Boulder_20260107文件夹进行测试吧。
+- 晚上初步增加了更多的几何参数计算函数，放在了./geometry/grain_metric.py文件
+- 修改了rock_fastsam_system.py和yolo_fastsam.py一些代码，做了一些修改，以适配新的集合参数。
+- yolo_fastsam.py修改在步骤7计算颗粒属性中。
 
 ---
