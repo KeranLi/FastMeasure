@@ -34,7 +34,7 @@ try:
     UTILS_AVAILABLE = True
 except ImportError:
     UTILS_AVAILABLE = False
-    print("⚠️ 使用简化工具函数")
+    print("使用简化工具函数")
 
 # 导入后处理模块
 try:
@@ -42,7 +42,7 @@ try:
     POSTPROCESSOR_AVAILABLE = True
 except ImportError:
     POSTPROCESSOR_AVAILABLE = False
-    print("⚠️ 使用简化后处理")
+    print("使用简化后处理")
 
 # 导入项目一的关键函数（确保兼容性）
 try:
@@ -57,10 +57,10 @@ try:
         merge_overlapping_polygons
     )
     PROJECT1_AVAILABLE = True
-    print("✅ 成功导入项目一关键函数")
+    print("成功导入项目计算函数")
 except ImportError as e:
     PROJECT1_AVAILABLE = False
-    print(f"⚠️ 导入项目一函数失败: {e}")
+    print(f"导入项目计算函数失败: {e}")
 
 from skimage import measure, morphology
 
@@ -89,7 +89,7 @@ class UltraSegmentationPipeline:
             'total_time': 0.0
         }
         
-        print("✅ UltraSegmentationPipeline初始化完成")
+        print("-----UltraSegmentationPipeline初始化完成-----")
     
     def load_models(self, 
                    yolo_path: str, 
@@ -111,16 +111,16 @@ class UltraSegmentationPipeline:
         try:
             # 加载YOLO模型
             self.yolo_model = YOLO(yolo_path)
-            print(f"✅ YOLO模型加载成功: {yolo_path}")
+            print(f"-----YOLO模型加载成功: {yolo_path}-----")
             
             # 加载UltraFastSAM引擎
             self.ultra_fastsam = UltraFastSAM(fastsam_path, device)
-            print(f"✅ UltraFastSAM引擎加载成功: {fastsam_path}")
+            print(f"-----UltraFastSAM引擎加载成功: {fastsam_path}-----")
             
             return True
             
         except Exception as e:
-            print(f"❌ 模型加载失败: {e}")
+            print(f"-----模型加载失败: {e}-----")
             import traceback
             traceback.print_exc()
             return False
@@ -156,7 +156,7 @@ class UltraSegmentationPipeline:
         # 提取检测框
         boxes = results.boxes
         if boxes is None or len(boxes) == 0:
-            print("⚠️ YOLO未检测到任何颗粒")
+            print("-----YOLO未检测到任何颗粒-----")
             return np.array([]), pd.DataFrame()
         
         # 转换为numpy数组
@@ -198,7 +198,7 @@ class UltraSegmentationPipeline:
         yolo_time = time.time() - start_time
         self.performance['yolo_time'] = yolo_time
         
-        print(f"🎯 YOLO检测完成: {len(boxes_array)}个颗粒, 耗时: {yolo_time:.2f}s")
+        print(f"-----YOLO检测完成: {len(boxes_array)}个颗粒, 耗时: {yolo_time:.2f}s-----")
         
         return boxes_array, detections_df
     
@@ -224,27 +224,27 @@ class UltraSegmentationPipeline:
         total_start = time.time()
         
         print("=" * 60)
-        print("🚀 UltraFastSAM终极分割流水线启动")
+        print("-----UltraFastSAM分割流水线启动-----")
         print("=" * 60)
         
         # 验证输入图像
         h, w = image.shape[:2]
-        print(f"📊 输入图像: {w}x{h} 像素")
+        print(f"-----输入图像: {w}x{h} 像素-----")
         
         # 步骤1: YOLO检测
-        print("\n📦 步骤1: YOLO颗粒检测...")
+        print("\n-----步骤1: YOLO颗粒检测...-----")
         boxes_array, detections_df = self.detect_grains_yolo(
             image, conf_threshold, min_bbox_area
         )
         
         if len(boxes_array) == 0:
-            print("❌ 未检测到颗粒，返回空结果")
+            print("-----未检测到颗粒，返回空结果-----")
             empty_labels = np.zeros((h, w), dtype=np.int32)
             empty_mask = np.zeros((h, w), dtype=np.uint8)
             return [], empty_labels, empty_mask, pd.DataFrame(), None, None
         
         # 步骤2: UltraFastSAM分割
-        print("\n🎯 步骤2: UltraFastSAM智能分割...")
+        print("\n-----步骤2: UltraFastSAM智能分割...-----")
         fastsam_start = time.time()
         
         # 2.1 全局推理获取候选掩码
@@ -258,11 +258,11 @@ class UltraSegmentationPipeline:
             image.shape
         )
         
-        # 2.3 处理未分配的框（单框精细分割）
+        # 步骤3： 处理未分配的框（单框精细分割）
         all_masks = []
         mask_qualities = []
         
-        print(f"\n🔍 步骤2.3: 精细分割未分配的框...")
+        print(f"\n-----步骤3: 精细分割未分配的框...-----")
         for i, (box, assigned_mask) in enumerate(zip(boxes_array, assigned_masks)):
             if assigned_mask is not None:
                 all_masks.append(assigned_mask)
@@ -278,8 +278,8 @@ class UltraSegmentationPipeline:
         fastsam_time = time.time() - fastsam_start
         self.performance['fastsam_time'] = fastsam_time
         
-        # 步骤3: 掩码后处理
-        print("\n🔄 步骤3: 掩码后处理...")
+        # 步骤4: 掩码后处理
+        print("\n-----步骤4: 掩码后处理...-----")
         postprocess_start = time.time()
         
         processed_polygons = []
@@ -328,10 +328,10 @@ class UltraSegmentationPipeline:
         postprocess_time = time.time() - postprocess_start
         self.performance['postprocess_time'] = postprocess_time
         
-        print(f"✅ 后处理完成: {len(processed_polygons)}个有效多边形")
+        print(f"-----后处理完成: {len(processed_polygons)}个有效多边形-----")
         
-        # 步骤4: 智能后处理（去重和合并）
-        print("\n🔗 步骤4: 智能后处理...")
+        # 步骤5: 智能后处理（去重和合并）
+        print("\n-----步骤4: 智能后处理...-----")
         if len(processed_polygons) > 0:
             if POSTPROCESSOR_AVAILABLE:
                 # 使用智能后处理器
@@ -351,10 +351,10 @@ class UltraSegmentationPipeline:
                 # 使用简单后处理
                 processed_polygons = self._simple_postprocess(processed_polygons, min_area)
         
-        print(f"✅ 后处理后: {len(processed_polygons)}个最终颗粒")
+        print(f"-----后处理后: {len(processed_polygons)}个最终颗粒-----")
         
-        # 步骤5: 创建标签图像
-        print("\n🏷️  步骤5: 创建标签图像...")
+        # 步骤6: 创建标签图像
+        print("\n-----步骤5: 创建标签图像...-----")
         if len(processed_polygons) > 0:
             if PROJECT1_AVAILABLE:
                 try:
@@ -368,8 +368,8 @@ class UltraSegmentationPipeline:
             labels = np.zeros((h, w), dtype=np.int32)
             mask_all = np.zeros((h, w), dtype=np.uint8)
         
-        # 步骤6: 计算颗粒属性
-        print("\n📊 步骤6: 计算颗粒属性...")
+        # 步骤7: 计算颗粒属性
+        print("\n-----步骤6: 计算颗粒属性...-----")
         if np.max(labels) > 0:
             try:
                 props = measure.regionprops_table(
@@ -389,16 +389,32 @@ class UltraSegmentationPipeline:
                     ),
                 )
                 grain_data = pd.DataFrame(props)
+
+                # 提取颗粒的轮廓坐标
+                contours = []
+                for label in np.unique(labels):
+                    if label == 0:  # 跳过背景
+                        continue
+                    
+                    # 找到颗粒的二值掩码
+                    binary_mask = (labels == label).astype(np.uint8)
+                    contour = measure.find_contours(binary_mask, 0.5)
+                    if contour:
+                        contours.append(contour[0])  # 假设使用第一个找到的轮廓
+                    
+                # 将提取的轮廓坐标添加到 grain_data
+                grain_data['coordinates'] = contours
+
             except Exception as e:
-                print(f"⚠️ 计算颗粒属性失败: {e}")
+                print(f"-----计算颗粒属性失败: {e}-----")
                 grain_data = pd.DataFrame()
         else:
             grain_data = pd.DataFrame()
         
-        # 步骤7: 可视化
+        # 步骤8: 可视化
         fig, ax = None, None
         if plot_image and len(processed_polygons) > 0:
-            print("\n🎨 步骤7: 生成可视化结果...")
+            print("\n-----步骤7: 生成可视化结果...-----")
             try:
                 fig, ax = plt.subplots(figsize=(15, 10))
                 ax.imshow(image)
@@ -417,32 +433,32 @@ class UltraSegmentationPipeline:
                 plt.tight_layout()
                 
             except Exception as e:
-                print(f"⚠️ 可视化生成失败: {e}")
+                print(f"-----可视化生成失败: {e}-----")
         
         # 性能总结
         total_time = time.time() - total_start
         self.performance['total_time'] = total_time
         
         print("\n" + "=" * 60)
-        print("📈 UltraFastSAM性能总结")
+        print("-----UltraFastSAM性能总结-----")
         print("=" * 60)
-        print(f"总处理时间: {total_time:.2f}秒")
-        print(f"YOLO检测: {self.performance['yolo_time']:.2f}秒 ({self.performance['yolo_time']/total_time*100:.1f}%)")
-        print(f"UltraFastSAM分割: {self.performance['fastsam_time']:.2f}秒 ({self.performance['fastsam_time']/total_time*100:.1f}%)")
-        print(f"后处理: {self.performance['postprocess_time']:.2f}秒 ({self.performance['postprocess_time']/total_time*100:.1f}%)")
+        print(f"-----总处理时间: {total_time:.2f}秒-----")
+        print(f"-----YOLO检测: {self.performance['yolo_time']:.2f}秒 ({self.performance['yolo_time']/total_time*100:.1f}%)-----")
+        print(f"-----UltraFastSAM分割: {self.performance['fastsam_time']:.2f}秒 ({self.performance['fastsam_time']/total_time*100:.1f}%)-----")
+        print(f"-----后处理: {self.performance['postprocess_time']:.2f}秒 ({self.performance['postprocess_time']/total_time*100:.1f}%)-----")
         
         # FastSAM引擎性能统计
         fastsam_stats = self.ultra_fastsam.get_performance_stats()
-        print(f"\n🔧 FastSAM引擎统计:")
-        print(f"  推理次数: {fastsam_stats['total_inferences']}")
-        print(f"  生成掩码: {fastsam_stats['total_masks_generated']}")
-        print(f"  过滤后掩码: {fastsam_stats['total_masks_filtered']}")
-        print(f"  平均推理时间: {fastsam_stats.get('avg_time_per_inference', 0):.3f}s")
+        print(f"\n-----FastSAM引擎统计:-----")
+        print(f" -----推理次数: {fastsam_stats['total_inferences']}-----")
+        print(f" -----生成掩码: {fastsam_stats['total_masks_generated']}-----")
+        print(f" -----过滤后掩码: {fastsam_stats['total_masks_filtered']}-----")
+        print(f" -----平均推理时间: {fastsam_stats.get('avg_time_per_inference', 0):.3f}s-----")
         
-        print(f"\n🎯 最终结果:")
-        print(f"  YOLO检测框: {len(boxes_array)}")
-        print(f"  有效掩码: {len(all_masks)}")
-        print(f"  最终颗粒数: {len(processed_polygons)} ({len(processed_polygons)/len(boxes_array)*100:.1f}%)")
+        print(f"\n-----最终结果:-----")
+        print(f" -----YOLO检测框: {len(boxes_array)}-----")
+        print(f" -----有效掩码: {len(all_masks)}-----")
+        print(f" -----最终颗粒数: {len(processed_polygons)} ({len(processed_polygons)/len(boxes_array)*100:.1f}%)-----")
         print("=" * 60)
         
         return processed_polygons, labels, mask_all, grain_data, fig, ax
@@ -582,9 +598,9 @@ class UltraSegmentationPipeline:
 
 
 if __name__ == "__main__":
-    print("UltraSegmentationPipeline测试")
+    print("-----UltraSegmentationPipeline测试-----")
     print("=" * 60)
     
     # 测试代码
     pipeline = UltraSegmentationPipeline()
-    print("✅ 流水线测试通过")
+    print("UltraSegmentationPipeline测试通过-----")
