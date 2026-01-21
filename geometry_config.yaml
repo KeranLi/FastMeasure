@@ -1,0 +1,22 @@
+# geometry_config.yaml
+output:
+  save_statistics: true  # 是否保存颗粒统计数据到 CSV 文件
+  statistics_columns:  # 要保留的统计参数列表
+    - area
+    - circularity
+    - aspect_ratio
+    - rectangularity
+    - compactness
+    - fractal_dimension
+    - angularity
+    - roundness
+
+# 颗粒形状计算配置
+grain_shape:
+  calculate_circularity: true  # 是否计算圆形度
+  calculate_aspect_ratio: true  # 是否计算长宽比
+  calculate_rectangularity: true  # 是否计算矩形度
+  calculate_compactness: true  # 是否计算压实度
+  calculate_fractal_dimension: true  # 是否计算分形维数
+  calculate_angularity: true  # 是否计算棱角度
+  calculate_roundness: true  # 是否计算磨圆度
