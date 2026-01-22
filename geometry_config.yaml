@@ -1,22 +1,19 @@
 # geometry_config.yaml
-output:
-  save_statistics: true  # 是否保存颗粒统计数据到 CSV 文件
-  statistics_columns:  # 要保留的统计参数列表
+grain_statistics_csv:
+  enabled: true
+
+  # 最终写入 grain_statistics.csv 的列（顺序就是输出顺序）
+  keep_columns:
+    - label
     - area
+    - perimeter
     - circularity
     - aspect_ratio
-    - rectangularity
     - compactness
-    - fractal_dimension
-    - angularity
     - roundness
+    - area_um2
+    - diameter_um
 
-# 颗粒形状计算配置
-grain_shape:
-  calculate_circularity: true  # 是否计算圆形度
-  calculate_aspect_ratio: true  # 是否计算长宽比
-  calculate_rectangularity: true  # 是否计算矩形度
-  calculate_compactness: true  # 是否计算压实度
-  calculate_fractal_dimension: true  # 是否计算分形维数
-  calculate_angularity: true  # 是否计算棱角度
-  calculate_roundness: true  # 是否计算磨圆度
+  # 不希望保存的列（比如 coordinates 太大）
+  drop_columns:
+    - coordinates

@@ -140,3 +140,9 @@
 - 修改人：李柯然
 - 修改类型：增加根据yaml配置需要计算的几何参数的功能
 - 涉及文件：geometry_config.yaml
+
+## 2026-01-22
+
+- 修改人：李柯然
+- 修改类型：修改集合参数配置功能，使得最后能够基于geometry_config.yaml即可确定组后csv中需要的集合参数
+- 涉及文件：geometry_config.yaml，geometry/config_loader.py，export_cav.py，fastsam/rock_fastsam_syste,.py
