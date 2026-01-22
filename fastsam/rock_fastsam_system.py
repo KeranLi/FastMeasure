@@ -46,6 +46,8 @@ except ImportError as e:
 
 # 导入多种几何尺寸计算函数
 from geometry.grain_metric import GrainShapeMetrics
+from geometry.config_loader import load_geometry_config
+from geometry.export_csv import select_columns_for_grain_statistics_csv
 
 class RockUltraSystem:
     """UltraFastSAM生产级岩石分割系统"""
@@ -65,6 +67,9 @@ class RockUltraSystem:
         
         # 加载配置文件
         self.config = self._load_config(config_path)
+
+        # 读取 geometry_config
+        self.geometry_config = load_geometry_config("geometry_config.yaml")
         
         # 设置输出目录
         self.output_root = Path(self.config['output']['root_dir'])
@@ -442,7 +447,15 @@ class RockUltraSystem:
                 
                 # 保存CSV
                 csv_path = output_dir / "grain_statistics.csv"
-                grain_data.to_csv(csv_path, index=False, encoding='utf-8')
+                #grain_data.to_csv(csv_path, index=False, encoding='utf-8')
+                grain_data_to_save = select_columns_for_grain_statistics_csv(
+                    grain_data,
+                    self.geometry_config,
+                    strict=False
+                )
+                
+                grain_data_to_save.to_csv(csv_path, index=False, encoding="utf-8")
+
                 output_files.append(str(csv_path))
                 self.logger.info(f"颗粒数据保存至: {csv_path}")
                 
