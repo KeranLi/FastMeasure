@@ -1,0 +1,19 @@
+# geometry_config.yaml
+grain_statistics_csv:
+  enabled: true
+
+  # 最终写入 grain_statistics.csv 的列（顺序就是输出顺序）
+  keep_columns:
+    - label
+    - area
+    - perimeter
+    - circularity
+    - aspect_ratio
+    - compactness
+    - roundness
+    - area_um2
+    - diameter_um
+
+  # 不希望保存的列（比如 coordinates 太大）
+  drop_columns:
+    - coordinates
