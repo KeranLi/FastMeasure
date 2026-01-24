@@ -147,3 +147,14 @@
 
 **具体内容：**
 - 参照 FastSAM 结构，正式增加并集成了 MobileSAM 处理流。
+
+---
+
+## 2026-01-24
+
+- **修改人：** 李柯然
+- **修改类型：** 功能新增
+- **涉及文件：** `/geometry` 文件夹、`grain_metric.py`
+
+**具体内容：**
+- 凸度(convexity)定义，正式增加并集成了 calculate_convexity 计算函数。

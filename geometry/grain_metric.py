@@ -17,6 +17,36 @@ class GrainShapeMetrics:
             grain_data (pd.DataFrame): 包含颗粒区域数据的DataFrame，必须包含 'area', 'perimeter', 'coordinates' 等列
         """
         self.grain_data = grain_data
+
+    def calculate_convexity(self) -> pd.Series:
+        """
+        计算颗粒的凸度 (Convexity)
+        
+        公式: C = A / A_hull
+        其中 A 是颗粒面积，A_hull 是颗粒二维投影轮廓凸包的面积。
+        """
+        # 如果 grain_data 是通过 skimage.measure.regionprops 获得的，
+        # 通常已经包含了 'solidity' 属性，它等同于此处的凸度。
+        if 'solidity' in self.grain_data.columns:
+            return self.grain_data['solidity']
+        
+        # 如果没有预计算好的 solidity，则通过坐标手动计算
+        convexity_list = []
+        for _, grain in self.grain_data.iterrows():
+            coords = np.array(grain['coordinates'])
+            area = grain['area']
+            
+            # 使用 scipy.spatial.ConvexHull 计算凸包
+            try:
+                hull = ConvexHull(coords)
+                # hull.volume 在 2D 中代表面积 (Area)
+                a_hull = hull.volume 
+                convexity_list.append(area / a_hull)
+            except Exception:
+                # 针对坐标点不足以构成凸包的情况处理
+                convexity_list.append(np.nan)
+                
+        return pd.Series(convexity_list)
         
     def calculate_circularity(self) -> pd.Series:
         """
@@ -79,7 +109,7 @@ class GrainShapeMetrics:
                         count += 1
             return np.log(count) / np.log(1 / box_size)
         
-            return np.array([box_counting(grain['coordinates']) for _, grain in self.grain_data.iterrows()])
+            #return np.array([box_counting(grain['coordinates']) for _, grain in self.grain_data.iterrows()])
         
     def calculate_angularity(self) -> pd.Series:
         """
@@ -115,5 +145,7 @@ class GrainShapeMetrics:
         self.grain_data['fractal_dimension'] = self.calculate_fractal_dimension()
         self.grain_data['angularity'] = self.calculate_angularity()
         self.grain_data['roundness'] = self.calculate_roundness()
+        self.grain_data['fractal_dimension'] = self.calculate_fractal_dimension()
+        self.grain_data['convexity'] = self.calculate_convexity()
         
         return self.grain_data
