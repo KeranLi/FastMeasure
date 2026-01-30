@@ -18,6 +18,70 @@ class GrainShapeMetrics:
         """
         self.grain_data = grain_data
 
+
+    def calculate_2d_zingg_parameters(self) -> pd.DataFrame:
+        """
+        在 2D 场景下，L=主轴长, S=I=副轴长
+        """
+        l = self.grain_data['major_axis_length']
+        s = self.grain_data['minor_axis_length']
+        
+        # 2D 适配版
+        ei = s / l  # 2D 伸长率
+        fi = 1.0    # 2D 无法体现扁平化，设为常数或忽略
+        ar = s / l  # 2D 长宽比
+        
+        return pd.DataFrame({
+            'EI_2d': ei,
+            'FI_2d': fi,
+            'AR_2d': ar
+        })
+
+    def calculate_fourier_descriptors(self, n_coeffs=25) -> pd.DataFrame:
+        """
+        2D 轮廓的傅里叶描述符（对应 3D 的球谐函数）
+        用于描述从整体到细节的形状特征
+        """
+        results = []
+        for _, grain in self.grain_data.iterrows():
+            coords = np.array(grain['coordinates'])
+            
+            # 1. 将坐标转换为复数形式 x + iy
+            complex_coords = coords[:, 0] + 1j * coords[:, 1]
+            
+            # 2. 离散傅里叶变换
+            coeffs = np.fft.fft(complex_coords)
+            
+            # 3. 归一化（消除平移、旋转、缩放影响）
+            # coeffs[0] 是直流分量（中心位置），忽略
+            # 用 coeffs[1] 归一化以实现尺度不变性
+            abs_coeffs = np.abs(coeffs)
+            if abs_coeffs[1] != 0:
+                normalized_coeffs = abs_coeffs / abs_coeffs[1]
+            else:
+                normalized_coeffs = np.zeros(len(abs_coeffs))
+
+            # 4. 提取类似 Dn 的特征 (取前 n_coeffs 个)
+            # D2 对应 normalized_coeffs[2], 依次类推
+            d_vals = []
+            for i in range(2, min(n_coeffs + 2, len(normalized_coeffs))):
+                d_vals.append(normalized_coeffs[i])
+            
+            # 如果系数不够，补齐
+            while len(d_vals) < 3: 
+                d_vals.append(0)
+                
+            results.append(d_vals[:3]) # 仅取 D2, D3, D4 演示
+
+        return pd.DataFrame(results, columns=['D2_2d', 'D3_2d', 'D4_2d'])
+
+    def calculate_sh_equivalent_fd(self, beta):
+        """
+        FD = (6 + beta) / 2
+        beta 通常通过 log(Fourier_Coeff) vs log(n) 的斜率获得
+        """
+        return (6 + beta) / 2
+
     def calculate_convexity(self) -> pd.Series:
         """
         计算颗粒的凸度 (Convexity)
