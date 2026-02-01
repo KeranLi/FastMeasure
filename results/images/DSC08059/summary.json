@@ -6,13 +6,13 @@
     "channels": 3
   },
   "total_grains": 6,
-  "processing_date": "2026-01-19 14:49:21",
-  "system_version": "2.0.0",
+  "processing_date": "2026-02-01 16:11:07",
+  "system_version": "1.0.0",
   "area_statistics_pixels": {
-    "total": 1216825.0,
-    "average": 202804.16666666666,
-    "min": 101898.0,
-    "max": 314734.0,
-    "std": 102952.96058961426
+    "total": 1217102.0,
+    "average": 202850.33333333334,
+    "min": 102035.0,
+    "max": 314660.0,
+    "std": 102906.12695397036
   }
 }
