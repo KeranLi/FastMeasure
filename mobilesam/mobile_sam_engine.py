@@ -20,7 +20,7 @@ try:
     MOBILESAM_AVAILABLE = True
 except ImportError:
     MOBILESAM_AVAILABLE = False
-    print("MobileSAM库未安装，请安装")
+    print(" MobileSAM库未安装，请执行：pip install git+https://github.com/ChaoningZhang/MobileSAM.git")
 
 # Segment Anything导入（作为备选）
 try:
@@ -52,9 +52,15 @@ class MobileSAMEngine:
         
         # 检查MobileSAM可用性
         if not MOBILESAM_AVAILABLE:
-            print("MobileSAM库未安装")
-            print("请安装")
-            raise ImportError("MobileSAM库未安装")
+            raise ImportError(
+                "MobileSAM库未安装！请执行：\n"
+                "pip install git+https://github.com/ChaoningZhang/MobileSAM.git"
+            )
+        
+        # 自动适配设备（如果CUDA不可用，自动切CPU）
+        if self.device == "cuda" and not torch.cuda.is_available():
+            print(" CUDA不可用，自动切换到CPU")
+            self.device = "cpu"
         
         # 加载模型
         try:
@@ -77,10 +83,11 @@ class MobileSAMEngine:
                 min_mask_region_area=10,
             )
             
-            print(f"✅ MobileSAM模型加载成功 (设备: {device})")
+            print(f" MobileSAM模型加载成功 (设备: {self.device})")
+        except FileNotFoundError:
+            raise FileNotFoundError(f"模型文件不存在: {model_path}\n请检查模型路径是否正确")
         except Exception as e:
-            print(f"模型加载失败: {e}")
-            raise
+            raise RuntimeError(f"模型加载失败: {str(e)}")
         
         # === MobileSAM优化参数（针对岩石颗粒）===
         self.params = {
@@ -139,7 +146,7 @@ class MobileSAMEngine:
             'auto_masks': 0,
         }
         
-        print("✅ MobileSAM引擎初始化完成")
+        print(" MobileSAM引擎初始化完成")
         self.print_parameters()
     
     def print_parameters(self):
@@ -244,7 +251,7 @@ class MobileSAMEngine:
                 return np.zeros(self.image_shape, dtype=np.uint8), 0.0
             
         except Exception as e:
-            print(f"框分割失败: {e}")
+            print(f" 框分割失败: {e}")
             return np.zeros(self.image_shape, dtype=np.uint8), 0.0
     
     def segment_with_box_and_point(self, box: List[float], point: Tuple[float, float]) -> Tuple[np.ndarray, float]:
@@ -323,7 +330,7 @@ class MobileSAMEngine:
                 return np.zeros(self.image_shape, dtype=np.uint8), 0.0
             
         except Exception as e:
-            print(f"框+点分割失败: {e}")
+            print(f" 框+点分割失败: {e}")
             return np.zeros(self.image_shape, dtype=np.uint8), 0.0
     
     def generate_auto_masks(self, image: np.ndarray) -> Tuple[List[np.ndarray], List[float]]:
@@ -374,11 +381,11 @@ class MobileSAMEngine:
             self.performance_stats['total_masks_generated'] += len(masks)
             self.performance_stats['total_masks_filtered'] += len(masks)
             
-            print(f"自动掩码生成: {len(masks)}个有效掩码，耗时: {inference_time:.2f}s")
+            print(f" 自动掩码生成: {len(masks)}个有效掩码，耗时: {inference_time:.2f}s")
             return masks, scores
             
         except Exception as e:
-            print(f"自动掩码生成失败: {e}")
+            print(f" 自动掩码生成失败: {e}")
             return [], []
     
     def _expand_box(self, box: List[float], expansion: float) -> List[float]:
@@ -628,7 +635,7 @@ class MobileSAMEngine:
         n_boxes = len(yolo_boxes)
         n_masks = len(mobilesam_masks)
         
-        print(f"智能匹配: {n_boxes}个框 vs {n_masks}个掩码")
+        print(f"🔍 智能匹配: {n_boxes}个框 vs {n_masks}个掩码")
         
         # 1. 计算成本矩阵（成本越低越好）
         cost_matrix = np.zeros((n_boxes, n_masks))
@@ -697,7 +704,7 @@ class MobileSAMEngine:
             
             # 4. 统计分配结果
             assigned_count = sum(1 for mask in assigned_masks if mask is not None)
-            print(f"智能匹配完成: {assigned_count}/{n_boxes} 个框获得掩码")
+            print(f" 智能匹配完成: {assigned_count}/{n_boxes} 个框获得掩码")
             
         return assigned_masks
     
@@ -726,12 +733,12 @@ class MobileSAMEngine:
 
 
 if __name__ == "__main__":
-    print("MobileSAM引擎测试")
+    print(" MobileSAM引擎测试")
     print("=" * 60)
     
     # 测试代码
     try:
         engine = MobileSAMEngine(device="cpu")
-        print("引擎测试通过")
+        print(" 引擎测试通过")
     except Exception as e:
-        print(f"引擎测试失败: {e}")
+        print(f" 引擎测试失败: {e}")
