@@ -1,6 +1,7 @@
 """
-SuperFastSAM
-文件名：rock_super_fastsam.py
+UltraFastSAM生产级系统
+文件名：rock_fastsam_system.py
+功能：完整的生产级岩石颗粒分割系统
 """
 
 import os
@@ -10,7 +11,7 @@ import logging
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Optional, Dict, Any
 import json
 import yaml
 
@@ -20,76 +21,55 @@ import pandas as pd
 from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from ultralytics import YOLO
 
-# 导入SuperFastSAM引擎
-try:
-    from fastsam_optimized import SuperFastSAM
-    from yolo_super_fastsam import yolo_super_fastsam_segmentation
-    print("✅ 成功导入SuperFastSAM引擎")
-except ImportError as e:
-    print(f"❌ 导入SuperFastSAM引擎失败: {e}")
-    sys.exit(1)
-
-# 导入工具函数
-try:
-    from utils import (
-        check_image_file_pro,
-        validate_image_data,
-        convert_to_rgb,
-        normalize_image
-    )
-    print("✅ 成功导入工具函数")
-except ImportError:
-    print("⚠️ 使用简化工具函数")
-    from utils_simple import *
+# 导入核心模块
+from .yolo_fastsam import UltraSegmentationPipeline
+from .seg_tools import ImageProcessor, FileUtils, PerformanceMonitor
 
 # 导入比例尺检测模块
 try:
     from scale_detector import ScaleDetector
     SCALE_DETECTOR_AVAILABLE = True
-    print("✅ 成功导入比例尺检测模块")
+    print("成功导入比例尺检测模块")
 except ImportError as e:
-    print(f"⚠️ 导入比例尺检测模块失败: {e}")
     SCALE_DETECTOR_AVAILABLE = False
+    print(f"导入比例尺检测模块失败: {e}")
 
 # 导入颗粒标注模块
 try:
     from grain_marker import add_grain_labels, add_labels_with_config
     GRAIN_MARKER_AVAILABLE = True
-    print("✅ 成功导入颗粒标注模块")
+    print("成功导入颗粒标注模块")
 except ImportError as e:
-    print(f"⚠️ 导入颗粒标注模块失败: {e}")
     GRAIN_MARKER_AVAILABLE = False
+    print(f"导入颗粒标注模块失败: {e}")
 
+# 导入多种几何尺寸计算函数
+from geometry.grain_metric import GrainShapeMetrics
+from geometry.config_loader import load_geometry_config
+from geometry.export_csv import select_columns_for_grain_statistics_csv
 
-class RockSegmentationSystemSuper:
-    """SuperFastSAM生产级岩石分割系统"""
+class RockUltraSystem:
+    """UltraFastSAM生产级岩石分割系统"""
     
     VERSION = "1.0.0"
     
-    def __init__(self, config_path: str = "new/config_super_fastsam.yaml"):
+    def __init__(self, config_path: str = "config.yaml"):
         """
-        初始化SuperFastSAM系统
+        初始化UltraFastSAM系统
         
         Args:
             config_path: 配置文件路径
         """
-        # 先初始化logger
-        self.logger = logging.getLogger(self.__class__.__name__)
-        if not self.logger.handlers:
-            handler = logging.StreamHandler()
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
-            self.logger.setLevel(logging.INFO)
-        
-        print("=" * 60)
-        print(f"🏭 SuperFastSAM岩石分割系统 v{self.VERSION}")
-        print("=" * 60)
+        print("=" * 70)
+        print(f"UltraFastSAM岩石颗粒自动分割系统 v{self.VERSION}")
+        print("=" * 70)
         
         # 加载配置文件
         self.config = self._load_config(config_path)
+
+        # 读取 geometry_config
+        self.geometry_config = load_geometry_config("geometry_config.yaml")
         
         # 设置输出目录
         self.output_root = Path(self.config['output']['root_dir'])
@@ -98,9 +78,11 @@ class RockSegmentationSystemSuper:
         # 初始化日志系统
         self._setup_logging()
         
-        # 初始化模型
-        self.yolo_model = None
-        self.super_fastsam = None
+        # 设置logger
+        self.logger = logging.getLogger(self.__class__.__name__)
+        
+        # 初始化核心流水线
+        self.pipeline = UltraSegmentationPipeline(self.config)
         
         # 初始化比例尺检测器
         self.scale_detector = None
@@ -109,35 +91,35 @@ class RockSegmentationSystemSuper:
         
         # 读取颗粒标注配置
         self.grain_label_config = self.config.get('grain_labeling', {})
-        
-        # 处理空字符串背景为None
         if 'bg_color' in self.grain_label_config and self.grain_label_config['bg_color'] == '':
             self.grain_label_config['bg_color'] = None
         
-        self.logger.info(f"SuperFastSAM系统初始化完成")
+        # 性能监控
+        self.performance_monitor = PerformanceMonitor()
+        self.processing_history = []
+        
+        self.logger.info(f"UltraFastSAM系统初始化完成")
         self.logger.info(f"输出目录: {self.output_root}")
+        self.logger.info(f"配置文件: {config_path}")
     
-    def _load_config(self, config_path: str) -> Dict:
+    def _load_config(self, config_path: str) -> Dict[str, Any]:
         """加载配置文件"""
         config_file = Path(config_path)
-        if not config_file.is_absolute():
-            config_file = Path(__file__).parent / Path(config_path).name
         
+        # 如果配置文件不存在，使用默认配置
         if not config_file.exists():
-            print(f"⚠️ 配置文件 {config_path} 不存在，使用默认配置")
+            print(f"配置文件 {config_path} 不存在，使用默认配置")
             return self._get_default_config()
         
         try:
-            with open(config_file, 'r', encoding='utf-8') as f:
-                config = yaml.safe_load(f)
-            print(f"✅ 配置文件加载成功: {config_file}")
+            config = FileUtils.safe_load_yaml(str(config_file), default={})
+            print(f"配置文件加载成功: {config_file}")
             return config
         except Exception as e:
-            print(f"❌ 配置文件加载失败: {e}")
-            print("使用默认配置")
+            print(f"配置文件加载失败: {e}")
             return self._get_default_config()
     
-    def _get_default_config(self) -> Dict:
+    def _get_default_config(self) -> Dict[str, Any]:
         """获取默认配置"""
         return {
             'model_paths': {
@@ -162,21 +144,21 @@ class RockSegmentationSystemSuper:
             },
             'processing': {
                 'yolo_confidence': 0.25,
-                'fastsam_confidence': 0.35,
                 'min_area': 30,
                 'min_bbox_area': 20,
                 'remove_edge_grains': False,
                 'plot_results': True,
-                'performance_monitor': True
+                'performance_monitoring': True
             },
             'output': {
-                'root_dir': 'results_super_fastsam',
+                'root_dir': 'results_ultra_fastsam',
                 'create_subdirs': True,
                 'save_visualization': True,
                 'save_mask': True,
                 'save_statistics': True,
                 'save_summary': True,
-                'save_performance': True
+                'save_performance': True,
+                'save_debug_info': False
             },
             'batch_processing': {
                 'supported_formats': ['.tif', '.tiff', '.jpg', '.jpeg', '.png', '.bmp'],
@@ -201,11 +183,6 @@ class RockSegmentationSystemSuper:
                 'text_outline': True,
                 'outline_color': 'black',
                 'outline_width': 2.0
-            },
-            'performance': {
-                'enable_monitoring': True,
-                'save_timings': True,
-                'alert_threshold_sec': 300
             }
         }
     
@@ -215,7 +192,7 @@ class RockSegmentationSystemSuper:
         if scale_config.get('enabled', False) and SCALE_DETECTOR_AVAILABLE:
             try:
                 self.scale_detector = ScaleDetector(self.config)
-                self.logger.info("✅ 比例尺检测器初始化成功")
+                self.logger.info("比例尺检测器初始化成功")
             except Exception as e:
                 self.logger.warning(f"比例尺检测器初始化失败: {e}")
                 self.scale_detector = None
@@ -230,7 +207,7 @@ class RockSegmentationSystemSuper:
         log_dir.mkdir(parents=True, exist_ok=True)
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_file = log_dir / f"super_fastsam_{timestamp}.log"
+        log_file = log_dir / f"ultra_fastsam_{timestamp}.log"
         
         log_level = getattr(logging, log_config['level'])
         
@@ -257,50 +234,44 @@ class RockSegmentationSystemSuper:
         self.logger.info(f"日志系统初始化完成，日志文件: {log_file}")
     
     def initialize_models(self) -> bool:
-        """初始化YOLO和SuperFastSAM模型"""
-        self.logger.info("=" * 50)
-        self.logger.info("初始化SuperFastSAM AI模型...")
+        """初始化AI模型"""
+        self.performance_monitor.start_timing('initialize_models')
         
         model_paths = self.config['model_paths']
         device = model_paths.get('device', 'cpu')
         
-        self.logger.info(f"运行设备: {device}")
+        self.logger.info(f"初始化AI模型 (设备: {device})")
         
         try:
-            # 加载YOLO模型
-            yolo_path = model_paths['yolo']
-            if not Path(yolo_path).exists():
-                self.logger.error(f"YOLO模型文件不存在: {yolo_path}")
-                return False
-            
-            self.logger.info(f"加载YOLO模型: {yolo_path}")
-            self.yolo_model = YOLO(yolo_path)
-            self.logger.info("✅ YOLO模型加载成功")
-            
-            # 加载SuperFastSAM引擎
-            fastsam_path = model_paths['fastsam']
-            if not Path(fastsam_path).exists():
-                self.logger.error(f"FastSAM模型文件不存在: {fastsam_path}")
-                return False
-            
-            self.logger.info(f"加载SuperFastSAM引擎: {fastsam_path}")
-            self.super_fastsam = SuperFastSAM(
-                model_path=fastsam_path,
+            success = self.pipeline.load_models(
+                yolo_path=model_paths['yolo'],
+                fastsam_path=model_paths['fastsam'],
                 device=device
             )
-            self.logger.info("✅ SuperFastSAM引擎加载成功")
             
-            self.logger.info("=" * 50)
-            return True
-            
+            if success:
+                self.performance_monitor.end_timing('initialize_models')
+                self.logger.info("AI模型初始化成功")
+                return True
+            else:
+                self.logger.error("AI模型初始化失败")
+                return False
+                
         except Exception as e:
+            self.performance_monitor.end_timing('initialize_models')
             self.logger.error(f"模型初始化失败: {e}")
             self.logger.error(traceback.format_exc())
             return False
     
-    def process_single_image(self, image_path: str) -> Dict:
+    def process_single_image(self, image_path: str) -> Dict[str, Any]:
         """
         处理单张岩石图片
+        
+        Args:
+            image_path: 图片路径
+            
+        Returns:
+            处理结果字典
         """
         result = {
             'image_path': str(image_path),
@@ -313,39 +284,39 @@ class RockSegmentationSystemSuper:
             'performance_metrics': {},
             'timestamp': datetime.now().isoformat(),
             'scale_factor': None,
-            'scale_detection_success': False
+            'scale_detection_success': False,
+            'system_version': self.VERSION
         }
         
-        start_time = time.time()
+        self.performance_monitor.start_timing('total_processing')
         
         try:
             # 检查图片文件
-            is_valid, message = check_image_file_pro(image_path)
-            if not is_valid:
-                self.logger.warning(f"⚠️ 图片文件检查警告: {image_path} - {message}")
+            self.logger.info(f"处理图片: {image_path}")
             
             # 创建输出目录
             output_dir = self.create_output_structure(Path(image_path))
             
             # 加载图片
-            self.logger.info(f"🖼️  加载图片: {image_path}")
-            image = self._load_image_safely(image_path)
+            self.performance_monitor.start_timing('image_loading')
+            image = ImageProcessor.load_image_safely(image_path)
             
             if image is None:
                 result['error_message'] = "无法加载图片"
-                result['processing_time'] = time.time() - start_time
-                self.logger.error(f"❌ 图片加载失败: {image_path}")
+                result['processing_time'] = self.performance_monitor.timings.get('total_processing', {}).get('elapsed', 0)
+                self.logger.error(f"图片加载失败: {image_path}")
                 return result
             
             # 验证图像数据
-            is_valid, valid_msg = validate_image_data(image)
+            is_valid, valid_msg = ImageProcessor.validate_image(image)
             if not is_valid:
                 result['error_message'] = valid_msg
-                result['processing_time'] = time.time() - start_time
-                self.logger.error(f"❌ 图像数据验证失败: {valid_msg}")
+                result['processing_time'] = self.performance_monitor.timings.get('total_processing', {}).get('elapsed', 0)
+                self.logger.error(f"图像数据验证失败: {valid_msg}")
                 return result
             
-            self.logger.info(f"📊 图片最终尺寸: {image.shape}, 数据类型: {image.dtype}")
+            self.performance_monitor.end_timing('image_loading')
+            self.logger.info(f"图片加载成功: {image.shape}")
             
             # 检测比例尺
             scale_factor = None
@@ -353,7 +324,9 @@ class RockSegmentationSystemSuper:
             
             if self.scale_detector and SCALE_DETECTOR_AVAILABLE:
                 try:
+                    self.performance_monitor.start_timing('scale_detection')
                     self.logger.info("检测图片中的比例尺...")
+                    
                     scale_factor, scale_success = self.scale_detector.detect(image_path)
                     
                     if scale_success:
@@ -363,41 +336,49 @@ class RockSegmentationSystemSuper:
                         self.logger.info(f"比例尺检测成功: {scale_factor:.4f} μm/px")
                     else:
                         self.logger.warning("比例尺检测失败，仅输出像素面积")
+                    
+                    self.performance_monitor.end_timing('scale_detection')
                 except Exception as e:
                     self.logger.warning(f"比例尺检测异常: {e}")
             
             # 获取处理参数
             processing_config = self.config['processing']
             
-            # 运行SuperFastSAM分割流水线
-            all_grains, labels, mask_all, grain_data, fig, ax = yolo_super_fastsam_segmentation(
+            # 运行UltraFastSAM分割
+            self.performance_monitor.start_timing('ultra_segmentation')
+            
+            all_grains, labels, mask_all, grain_data, fig, ax = self.pipeline.ultra_segmentation(
                 image=image,
-                yolo_model=self.yolo_model,
-                super_fastsam=self.super_fastsam,
                 conf_threshold=processing_config['yolo_confidence'],
                 min_area=processing_config['min_area'],
                 min_bbox_area=processing_config['min_bbox_area'],
                 remove_edge_grains=processing_config['remove_edge_grains'],
-                plot_image=processing_config['plot_results'],
-                class_id=None
+                plot_image=processing_config['plot_results']
             )
+            
+            self.performance_monitor.end_timing('ultra_segmentation')
             
             # 更新结果
             result['grains_count'] = len(all_grains)
             result['success'] = True
+
+            # 计算颗粒的形状参数
+            #print(grain_data.columns)  # 打印列名以确认是否包含 'coordinates' 列
+            shape_calculator = GrainShapeMetrics(grain_data)  # 创建GrainShapeMetrics实例
+            grain_data = shape_calculator.compute_all_metrics()  # 计算所有形状参数
             
             # 保存结果文件
             output_files = []
             
-            # 保存可视化结果（与项目一完全相同的三张图）
+            # 保存可视化结果
             if self.config['output']['save_visualization'] and fig is not None:
-                # 1. 第一张图：原始分割结果
+                # 1. 保存原始分割结果
                 plot_path = output_dir / "segmentation_result.png"
                 fig.savefig(plot_path, dpi=300, bbox_inches='tight', facecolor='white')
                 output_files.append(str(plot_path))
                 self.logger.info(f"原始结果图保存至: {plot_path}")
                 
-                # 2. 第二张图：带标注的结果图
+                # 2. 保存带标注的结果图
                 if (GRAIN_MARKER_AVAILABLE and 
                     self.grain_label_config.get('enabled', True) and 
                     grain_data is not None and 
@@ -409,7 +390,7 @@ class RockSegmentationSystemSuper:
                         ax_labeled.imshow(image)
                         ax_labeled.axis('off')
                         
-                        # 添加颗粒标注（与项目一相同）
+                        # 添加颗粒标注
                         if 'add_labels_with_config' in globals():
                             ax_labeled = add_labels_with_config(
                                 ax=ax_labeled,
@@ -437,10 +418,10 @@ class RockSegmentationSystemSuper:
                     except Exception as e:
                         self.logger.warning(f"生成带标注结果图失败: {e}")
                 
-                # 3. 关闭原始图形
+                # 关闭原始图形
                 plt.close(fig)
             
-            # 3. 第三张图：分割掩码图
+            # 3. 保存分割掩码
             if self.config['output']['save_mask'] and mask_all is not None and np.max(mask_all) > 0:
                 mask_path = output_dir / "segmentation_mask.png"
                 mask_uint8 = (mask_all > 0).astype(np.uint8) * 255
@@ -448,7 +429,7 @@ class RockSegmentationSystemSuper:
                 output_files.append(str(mask_path))
                 self.logger.info(f"分割掩码保存至: {mask_path}")
             
-            # 保存统计表格（与项目一格式相同）
+            # 保存统计表格
             if self.config['output']['save_statistics'] and grain_data is not None and not grain_data.empty:
                 # 确保是DataFrame
                 if not isinstance(grain_data, pd.DataFrame):
@@ -466,7 +447,15 @@ class RockSegmentationSystemSuper:
                 
                 # 保存CSV
                 csv_path = output_dir / "grain_statistics.csv"
-                grain_data.to_csv(csv_path, index=False, encoding='utf-8')
+                #grain_data.to_csv(csv_path, index=False, encoding='utf-8')
+                grain_data_to_save = select_columns_for_grain_statistics_csv(
+                    grain_data,
+                    self.geometry_config,
+                    strict=False
+                )
+                
+                grain_data_to_save.to_csv(csv_path, index=False, encoding="utf-8")
+
                 output_files.append(str(csv_path))
                 self.logger.info(f"颗粒数据保存至: {csv_path}")
                 
@@ -477,103 +466,55 @@ class RockSegmentationSystemSuper:
                     )
                     
                     json_path = output_dir / "summary.json"
-                    with open(json_path, 'w', encoding='utf-8') as f:
-                        json.dump(summary, f, indent=2, ensure_ascii=False)
+                    FileUtils.safe_save_json(summary, str(json_path))
                     output_files.append(str(json_path))
             
-            # 保存性能指标
+            # 保存性能数据
             if self.config['output']['save_performance']:
-                performance_data = {
-                    'image_name': Path(image_path).name,
-                    'processing_time': time.time() - start_time,
-                    'grains_count': len(all_grains),
-                    'timestamp': datetime.now().isoformat(),
-                    'image_size': f"{image.shape[1]}x{image.shape[0]}"
-                }
-                
+                performance_data = self.pipeline.get_performance()
                 perf_path = output_dir / "performance.json"
-                with open(perf_path, 'w', encoding='utf-8') as f:
-                    json.dump(performance_data, f, indent=2, ensure_ascii=False)
+                FileUtils.safe_save_json(performance_data, str(perf_path))
                 output_files.append(str(perf_path))
             
+            # 保存调试信息（如果需要）
+            if self.config['output'].get('save_debug_info', False):
+                debug_info = {
+                    'image_shape': image.shape,
+                    'num_yolo_boxes': len(all_grains),
+                    'scale_factor': scale_factor,
+                    'config': self.config
+                }
+                
+                debug_path = output_dir / "debug_info.json"
+                FileUtils.safe_save_json(debug_info, str(debug_path))
+                output_files.append(str(debug_path))
+            
             result['output_files'] = output_files
-            result['processing_time'] = time.time() - start_time
-            self.logger.info(f"图片处理完成，耗时: {result['processing_time']:.2f}秒")
             
         except Exception as e:
             result['success'] = False
             result['error_message'] = str(e)
-            result['processing_time'] = time.time() - start_time
-            self.logger.error(f"图片处理失败: {image_path}")
+            self.logger.error(f"❌ 图片处理失败: {image_path}")
             self.logger.error(f"错误信息: {e}")
             self.logger.error(traceback.format_exc())
+        
+        finally:
+            # 结束总计时
+            self.performance_monitor.end_timing('total_processing')
             
+            # 计算总处理时间
+            total_time = self.performance_monitor.timings.get('total_processing', {}).get('elapsed', 0)
+            result['processing_time'] = total_time
+            
+            # 保存性能指标
+            result['performance_metrics'] = self.performance_monitor.get_summary()
+            
+            # 记录处理历史
+            self.processing_history.append(result.copy())
+            
+            self.logger.info(f"图片处理完成，耗时: {total_time:.2f}秒")
+        
         return result
-    
-    def _load_image_safely(self, image_path: str) -> Optional[np.ndarray]:
-        """安全加载图片（多重回退机制）"""
-        methods = [
-            self._load_with_skimage,
-            self._load_with_pil,
-            self._load_with_opencv,
-            self._load_with_binary
-        ]
-        
-        for method in methods:
-            try:
-                image = method(image_path)
-                if image is not None:
-                    # 转换为RGB格式
-                    image = convert_to_rgb(image)
-                    # 归一化到0-255
-                    image = normalize_image(image)
-                    return image
-            except Exception as e:
-                self.logger.debug(f"图片加载方法失败: {method.__name__} - {e}")
-                continue
-        
-        return None
-    
-    def _load_with_skimage(self, image_path: str) -> Optional[np.ndarray]:
-        """使用skimage加载"""
-        try:
-            from skimage import io
-            image = io.imread(image_path)
-            return image
-        except:
-            return None
-    
-    def _load_with_pil(self, image_path: str) -> Optional[np.ndarray]:
-        """使用PIL加载"""
-        try:
-            pil_image = Image.open(image_path)
-            if pil_image.mode != 'RGB':
-                pil_image = pil_image.convert('RGB')
-            return np.array(pil_image)
-        except:
-            return None
-    
-    def _load_with_opencv(self, image_path: str) -> Optional[np.ndarray]:
-        """使用OpenCV加载"""
-        try:
-            import cv2
-            img_bgr = cv2.imread(image_path)
-            if img_bgr is not None:
-                return cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-        except:
-            return None
-    
-    def _load_with_binary(self, image_path: str) -> Optional[np.ndarray]:
-        """使用二进制加载"""
-        try:
-            with open(image_path, 'rb') as f:
-                data = f.read()
-                pil_image = Image.open(io.BytesIO(data))
-                if pil_image.mode != 'RGB':
-                    pil_image = pil_image.convert('RGB')
-                return np.array(pil_image)
-        except:
-            return None
     
     def create_output_structure(self, image_path: Path) -> Path:
         """创建输出目录结构"""
@@ -587,7 +528,7 @@ class RockSegmentationSystemSuper:
         return output_dir
     
     def _create_summary_dict(self, image_path, image, grain_data, scale_success, scale_factor):
-        """创建汇总信息字典（与项目一格式相同）"""
+        """创建汇总信息字典"""
         summary = {
             'image_name': Path(image_path).name,
             'image_size': {
@@ -635,11 +576,165 @@ class RockSegmentationSystemSuper:
         
         return summary
     
+    def batch_process(self, input_folder: str) -> Dict[str, Any]:
+        """
+        批量处理图片
+        
+        Args:
+            input_folder: 输入文件夹路径
+            
+        Returns:
+            批量处理结果
+        """
+        self.logger.info(f"开始批量处理: {input_folder}")
+        
+        # 查找图片文件
+        input_path = Path(input_folder)
+        if not input_path.exists():
+            self.logger.error(f"输入文件夹不存在: {input_folder}")
+            return {'success': False, 'error': '输入文件夹不存在'}
+        
+        # 获取支持的图片格式
+        supported_formats = self.config['batch_processing']['supported_formats']
+        
+        # 查找所有图片文件
+        image_files = []
+        for format_ext in supported_formats:
+            image_files.extend(input_path.rglob(f"*{format_ext}"))
+            image_files.extend(input_path.rglob(f"*{format_ext.upper()}"))
+        
+        image_files = list(set(image_files))
+        
+        if not image_files:
+            self.logger.error(f"未找到支持的图片文件: {input_folder}")
+            return {'success': False, 'error': '未找到支持的图片文件'}
+        
+        self.logger.info(f"找到 {len(image_files)} 张图片")
+        
+        # 批量处理结果
+        batch_results = {
+            'total': len(image_files),
+            'success': 0,
+            'failed': 0,
+            'failed_images': [],
+            'total_grains': 0,
+            'processing_start': datetime.now().isoformat(),
+            'individual_results': []
+        }
+        
+        # 处理每张图片
+        for i, image_file in enumerate(image_files, 1):
+            self.logger.info(f"处理进度: {i}/{len(image_files)} - {image_file.name}")
+            
+            # 检查文件是否损坏
+            skip_corrupted = self.config['batch_processing']['skip_corrupted']
+            if skip_corrupted:
+                image_data = ImageProcessor.load_image_safely(str(image_file))
+                if image_data is None:
+                    self.logger.warning(f"跳过损坏图片: {image_file.name}")
+                    batch_results['failed'] += 1
+                    batch_results['failed_images'].append({
+                        'path': str(image_file),
+                        'error': '文件损坏',
+                        'skipped': True
+                    })
+                    continue
+            
+            # 处理单张图片
+            result = self.process_single_image(str(image_file))
+            batch_results['individual_results'].append(result)
+            
+            if result['success']:
+                batch_results['success'] += 1
+                batch_results['total_grains'] += result['grains_count']
+                self.logger.info(f"成功: {image_file.name} ({result['grains_count']}个颗粒)")
+            else:
+                batch_results['failed'] += 1
+                batch_results['failed_images'].append({
+                    'path': str(image_file),
+                    'error': result['error_message'],
+                    'skipped': False
+                })
+                self.logger.warning(f"失败: {image_file.name} - {result['error_message']}")
+        
+        batch_results['processing_end'] = datetime.now().isoformat()
+        
+        # 生成批量报告
+        self._generate_batch_report(batch_results)
+        
+        self.logger.info(f"批量处理完成: {batch_results['success']}/{batch_results['total']} 成功")
+        
+        return batch_results
+    
+    def _generate_batch_report(self, batch_results: Dict[str, Any]):
+        """生成批量处理报告"""
+        report_path = self.output_root / "batch_report.txt"
+        
+        with open(report_path, 'w', encoding='utf-8') as f:
+            f.write("=" * 70 + "\n")
+            f.write("UltraFastSAM批量处理报告\n")
+            f.write("=" * 70 + "\n\n")
+            
+            f.write(f"处理开始时间: {batch_results['processing_start']}\n")
+            f.write(f"处理结束时间: {batch_results['processing_end']}\n")
+            f.write(f"处理总时长: {self._calculate_duration(batch_results['processing_start'], batch_results['processing_end'])}\n\n")
+            
+            f.write(f"总图片数: {batch_results['total']}\n")
+            f.write(f"成功处理: {batch_results['success']}\n")
+            f.write(f"处理失败: {batch_results['failed']}\n")
+            f.write(f"总检测颗粒数: {batch_results['total_grains']}\n\n")
+            
+            if batch_results['failed'] > 0:
+                f.write("失败/跳过图片列表:\n")
+                f.write("-" * 70 + "\n")
+                for i, fail in enumerate(batch_results['failed_images'], 1):
+                    f.write(f"{i}. 图片: {fail['path']}\n")
+                    if fail.get('skipped', False):
+                        f.write(f"   原因: 文件损坏，已跳过 - {fail['error']}\n")
+                    else:
+                        f.write(f"   原因: 处理失败 - {fail['error']}\n")
+                    f.write("-" * 70 + "\n")
+            
+            successful_results = [r for r in batch_results['individual_results'] if r.get('success')]
+            if successful_results:
+                f.write("\n成功处理图片统计:\n")
+                f.write("-" * 70 + "\n")
+                for i, result in enumerate(successful_results, 1):
+                    f.write(f"{i}. {result['image_name']}\n")
+                    f.write(f"   颗粒数: {result['grains_count']}\n")
+                    f.write(f"   处理时间: {result['processing_time']:.2f}秒\n")
+                    if result.get('scale_detection_success', False):
+                        f.write(f"   比例因子: {result.get('scale_factor', 'N/A')} μm/px\n")
+                    if result['output_files']:
+                        f.write(f"   输出文件: {len(result['output_files'])}个\n")
+                f.write("-" * 70 + "\n")
+        
+        # 保存JSON格式的报告
+        json_report_path = self.output_root / "batch_report.json"
+        FileUtils.safe_save_json(batch_results, str(json_report_path))
+        
+        self.logger.info(f"批量处理报告保存至: {report_path}")
+    
+    def _calculate_duration(self, start_iso: str, end_iso: str) -> str:
+        """计算处理时长"""
+        try:
+            start_time = datetime.fromisoformat(start_iso)
+            end_time = datetime.fromisoformat(end_iso)
+            duration = end_time - start_time
+            
+            hours = duration.seconds // 3600
+            minutes = (duration.seconds % 3600) // 60
+            seconds = duration.seconds % 60
+            
+            return f"{hours}小时{minutes}分钟{seconds}秒"
+        except:
+            return "未知"
+    
     def show_system_info(self):
         """显示系统信息"""
-        print("=" * 60)
-        print(f"🏭 SuperFastSAM岩石颗粒自动分割系统 v{self.VERSION}")
-        print("=" * 60)
+        print("=" * 70)
+        print(f"🏭 UltraFastSAM岩石颗粒自动分割系统 v{self.VERSION}")
+        print("=" * 70)
         print(f"系统时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"输出目录: {self.output_root}")
         print(f"设备模式: {self.config['model_paths'].get('device', 'cpu')}")
@@ -664,14 +759,22 @@ class RockSegmentationSystemSuper:
         else:
             print(f"颗粒标注: 已禁用")
         
-        print(f"性能监控: {'已启用' if self.config.get('performance', {}).get('enable_monitoring', False) else '已禁用'}")
-        print("=" * 60)
+        print("=" * 70)
+    
+    def get_processing_history(self) -> List[Dict[str, Any]]:
+        """获取处理历史"""
+        return self.processing_history.copy()
+    
+    def clear_processing_history(self):
+        """清空处理历史"""
+        self.processing_history = []
+        self.logger.info("处理历史已清空")
 
 
 if __name__ == "__main__":
-    print("这是一个模块文件，请通过 run_super_fastsam.py 来启动系统")
+    print("这是一个模块文件，请通过 run_fastsam.py 来启动系统")
     print("或者直接使用:")
-    print("  from rock_super_fastsam import RockSegmentationSystemSuper")
-    print("  system = RockSegmentationSystemSuper()")
+    print("  from rock_fastsam_system import RockUltraSystem")
+    print("  system = RockUltraSystem()")
     print("  system.initialize_models()")
     print("  system.process_single_image('图片路径')")

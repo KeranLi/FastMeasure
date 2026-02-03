@@ -1,0 +1,166 @@
+# MobileSAM岩石颗粒自动分割系统配置文件
+# 针对MobileSAM特点优化
+
+# ===== 模型路径配置 =====
+model_paths:
+  # YOLO模型路径（使用绝对路径）
+  yolo: "../models/best.pt"
+  # MobileSAM模型路径（使用绝对路径）
+  mobilesam: "../models/mobile_sam.pt"
+  # 运行设备：cpu 或 cuda
+  device: "cuda"
+  # MobileSAM模型类型
+  sam_type: "vit_t"
+
+# ===== 比例尺检测配置 =====
+scale_detection:
+  enabled: true
+  known_length_um: 1000.0
+  
+  # 检测参数（一般无需修改）
+  detection_params:
+    red_lower1: [0, 120, 120]
+    red_upper1: [10, 255, 255]
+    red_lower2: [160, 120, 120]
+    red_upper2: [180, 255, 255]
+    crop_height: 220
+    crop_width: 600
+    search_margin: 80
+    min_aspect_ratio: 8
+    min_horizontal_score: 0.6
+
+# ===== MobileSAM专用参数 =====
+mobilesam_params:
+  # 通用推理参数
+  general:
+    points_per_side: 32          # 点提示密度
+    points_per_batch: 64         # 批处理大小
+    pred_iou_thresh: 0.88        # 预测IoU阈值
+    stability_score_thresh: 0.95 # 稳定性分数阈值
+    box_nms_thresh: 0.7          # 框NMS阈值
+    crop_n_layers: 0             # 裁剪层数（0表示不裁剪）
+    crop_n_points_downscale_factor: 1  # 裁剪点下采样因子
+  
+  # 针对岩石颗粒的优化参数
+  grain_optimization:
+    use_box_prompt: true          # 使用框提示（比点提示更稳定）
+    use_center_point: true        # 同时使用中心点提示
+    box_expansion: 1.15           # 框扩展系数（1.0=原始框）
+    min_mask_confidence: 0.3      # 最小掩码置信度
+    min_mask_area: 10             # 最小掩码面积
+    max_mask_area_ratio: 0.8      # 最大掩码面积比例
+    
+  # 多尺度推理
+  multi_scale:
+    enabled: true
+    scales: [0.5, 1.0, 1.5]      # 多尺度推理
+    merge_strategy: "union"       # 合并策略: union, intersection, average
+
+# ===== 处理参数配置 =====
+processing:
+  # YOLO检测置信度阈值（MobileSAM需要更多框）
+  yolo_confidence: 0.80
+  # 最小颗粒面积（像素数）
+  min_area: 30
+  # 最小检测框面积（像素数）
+  min_bbox_area: 15
+  # 是否移除边缘颗粒
+  remove_edge_grains: false
+  # 是否显示结果图
+  plot_results: true
+  # 是否启用性能监控
+  performance_monitoring: true
+
+# ===== 输出配置 =====
+output:
+  # 结果根目录
+  root_dir: "results_mobilesam"
+  # 是否按图片名创建子目录
+  create_subdirs: true
+  # 保存可视化结果图（三张图）
+  save_visualization: true
+  # 保存分割掩码
+  save_mask: true
+  # 保存统计表格（CSV格式）
+  save_statistics: true
+  # 保存JSON格式的汇总信息
+  save_summary: true
+  # 保存性能数据
+  save_performance: true
+  # 保存调试信息（仅用于开发）
+  save_debug_info: false
+
+# ===== 批量处理配置 =====
+batch_processing:
+  # 支持的图片格式
+  supported_formats: [".tif", ".tiff", ".jpg", ".jpeg", ".png", ".bmp"]
+  # 遇到损坏图片是否跳过
+  skip_corrupted: true
+  # 最大工作进程数（生产环境建议1）
+  max_workers: 1
+  # 是否记录错误日志
+  log_errors: true
+
+# ===== 日志配置 =====
+logging:
+  # 日志级别：DEBUG, INFO, WARNING, ERROR
+  level: "INFO"
+  # 是否保存到文件
+  save_to_file: true
+  # 是否在控制台显示
+  show_in_console: true
+  # 日志格式
+  log_format: "%(asctime)s - %(levelname)s - %(message)s"
+
+# ===== 颗粒标注配置 =====
+grain_labeling:
+  enabled: true
+  font_size: 11
+  text_color: "yellow"
+  bg_color: ""
+  show_area: true
+  max_labels: 1000
+  min_area: 0
+  text_outline: true
+  outline_color: "black"
+  outline_width: 2.0
+
+# ===== 后处理参数 =====
+postprocessing:
+  # 智能后处理
+  smart_postprocess:
+    enabled: true
+    min_area: 30
+    iou_threshold: 0.5
+    simplify_tolerance: 1.0
+    buffer_distance: 0.5
+  
+  # 重叠处理
+  overlap_handling:
+    merge_threshold: 0.7
+    split_connected: true
+    remove_small: true
+  
+  # 形态学优化
+  morphological_optimization:
+    enabled: true
+    buffer_size: 0.5
+    simplify: true
+
+# ===== 性能优化 =====
+performance:
+  # 内存优化
+  memory:
+    max_image_size_mb: 50
+    use_memory_mapping: false
+    
+  # 缓存设置
+  cache:
+    enabled: true
+    cache_dir: "cache"
+    max_cache_size_mb: 1000
+    
+  # 并行处理
+  parallel:
+    enabled: false
+    max_workers: 2

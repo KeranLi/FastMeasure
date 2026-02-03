@@ -1,3 +1,0 @@
-代码文件在原项目中都处于autodl-tmp/segmenteverygrain/new/super_fastsam/run_super_fastsam.py
-
-python run_super_fastsam.py --input ./21KJ20-1.tif --performance
