@@ -158,3 +158,13 @@
 
 **具体内容：**
 - 凸度(convexity)定义，正式增加并集成了 calculate_convexity 计算函数。
+- ---
+
+## 2026-2-3
+
+- **修改人：** 张立华
+- **修改类型：** 功能新增
+- **涉及文件：** `mobilesam` 文件夹、新增gui模块`mobilesam_interactive.py`
+
+**具体内容：**
+- gui交互界面shift+s后会自动保存颗粒数据，以及命令行交互式命令。
