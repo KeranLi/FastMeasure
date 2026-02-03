@@ -158,3 +158,13 @@
 
 **具体内容：**
 - 凸度(convexity)定义，正式增加并集成了 calculate_convexity 计算函数。
+
+
+## 2026-02-03
+
+- **修改人：** 李柯然
+- **修改类型：** 功能新增
+- **涉及文件：** `mobilesam_interactive.py`
+
+**具体内容：**
+- 不明白为什么要装MobileSAM库，原有Ultralytics的SAM库不行吗
