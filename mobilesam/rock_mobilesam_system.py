@@ -1,7 +1,7 @@
 """
 MobileSAM生产级系统
 文件名：rock_mobilesam_system.py
-功能：完整的生产级岩石颗粒分割系统
+功能：完整的生产级岩石颗粒分割系统，统一管理所有功能
 """
 
 import os
@@ -26,7 +26,7 @@ import matplotlib.image as mpimg
 from .yolo_mobilesam import MobileSegmentationPipeline
 from .seg_tools import ImageProcessor, FileUtils, PerformanceMonitor
 
-# 导入geometry模块（新增）
+# 导入geometry模块
 from geometry.grain_metric import GrainShapeMetrics
 from geometry.config_loader import load_geometry_config
 from geometry.export_csv import select_columns_for_grain_statistics_csv
@@ -49,11 +49,20 @@ except ImportError as e:
     GRAIN_MARKER_AVAILABLE = False
     print(f"导入颗粒标注模块失败: {e}")
 
+# 导入交互式模块（修改为增强版）
+try:
+    from mobilesam_interactive import PureMobileSAMInteractiveEnhanced  # 核心修改：替换为增强版类名
+    INTERACTIVE_MODULE_AVAILABLE = True
+    print("成功导入增强版交互式模块")
+except ImportError as e:
+    INTERACTIVE_MODULE_AVAILABLE = False
+    print(f"导入增强版交互式模块失败: {e}")
+
 
 class RockMobileSystem:
-    """MobileSAM生产级岩石分割系统"""
+    """MobileSAM生产级岩石分割系统（统一主系统）"""
     
-    VERSION = "1.0.0"
+    VERSION = "1.1.0"
     
     def __init__(self, config_path: str = "config.yaml"):
         """
@@ -63,7 +72,7 @@ class RockMobileSystem:
             config_path: 配置文件路径
         """
         print("=" * 70)
-        print(f"MobileSAM岩石颗粒自动分割系统 v{self.VERSION}")
+        print(f"MobileSAM岩石颗粒自动分割系统 v{self.VERSION}（统一架构）")
         print("=" * 70)
         
         # 加载配置文件
@@ -98,6 +107,9 @@ class RockMobileSystem:
         # 性能监控
         self.performance_monitor = PerformanceMonitor()
         self.processing_history = []
+        
+        # 交互式系统实例（延迟初始化）
+        self.interactive_system = None
         
         self.logger.info(f"MobileSAM系统初始化完成")
         self.logger.info(f"输出目录: {self.output_root}")
@@ -764,7 +776,7 @@ class RockMobileSystem:
     def show_system_info(self):
         """显示系统信息"""
         print("=" * 70)
-        print(f"🏭 MobileSAM岩石颗粒自动分割系统 v{self.VERSION}")
+        print(f" MobileSAM岩石颗粒自动分割系统 v{self.VERSION}（统一架构）")
         print("=" * 70)
         print(f"系统时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"输出目录: {self.output_root}")
@@ -791,7 +803,51 @@ class RockMobileSystem:
         else:
             print(f"颗粒标注: 已禁用")
         
+        print(f"交互式模块: {'已安装' if INTERACTIVE_MODULE_AVAILABLE else '未安装'}")
         print("=" * 70)
+    
+    def run_interactive_mode(self, image_path: str = None):
+        """
+        运行交互式模式（使用增强版）
+        
+        Args:
+            image_path: 可选，如果提供则直接加载该图片
+        """
+        if not INTERACTIVE_MODULE_AVAILABLE:
+            print("\n 增强版交互式模块不可用")
+            print("请确保 mobilesam_interactive.py 文件中存在 PureMobileSAMInteractiveEnhanced 类")
+            print("或者使用自动处理模式: python run_mobilesam.py --input 图片路径")
+            return
+        
+        print("\n" + "=" * 60)
+        print("   增强版交互式MobileSAM系统")  # 核心修改：更新提示信息
+        print("=" * 60)
+        print("特点：支持完整结果输出，包含统计信息、CSV、JSON等")  # 核心修改：添加增强版特点说明
+        print("注意: 交互式模式需要图形界面支持")
+        print("      在无GUI的服务器上可能无法正常运行")
+        print("=" * 60)
+        
+        try:
+            # 从配置中获取模型路径
+            model_paths = self.config['model_paths']
+            
+            # 创建增强版交互式实例  # 核心修改：替换为增强版类名
+            interactive_system = PureMobileSAMInteractiveEnhanced(
+                model_path=model_paths['mobilesam'],
+                device=model_paths.get('device', 'cpu'),
+                model_type=model_paths.get('sam_type', 'vit_t')
+            )
+            
+            # 运行交互模式
+            interactive_system.run_interactive_mode(image_path)
+            
+            print("\n" + "=" * 60)
+            print("交互式模式完成")
+            print("=" * 60)
+            
+        except Exception as e:
+            print(f" 增强版交互式模式运行失败: {e}")
+            traceback.print_exc()
     
     def get_processing_history(self) -> List[Dict[str, Any]]:
         """获取处理历史"""
