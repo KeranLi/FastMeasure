@@ -1,0 +1,28 @@
+{
+  "image_name": "19B093-1.png",
+  "image_size": {
+    "height": 3264,
+    "width": 4908,
+    "channels": 3
+  },
+  "total_grains": 29,
+  "processing_date": "2026-01-19 15:39:20",
+  "system_version": "2.0.0",
+  "area_statistics_pixels": {
+    "total": 874420.0,
+    "average": 30152.41379310345,
+    "min": 4169.0,
+    "max": 116636.0,
+    "std": 26219.159316256337
+  },
+  "scale_detection": {
+    "success": true,
+    "scale_factor_um_per_px": 4.166666666666667
+  },
+  "area_statistics_um2": {
+    "total": 15180902.77777778,
+    "average": 523479.4061302683,
+    "min": 72378.47222222223,
+    "max": 2024930.555555556
+  }
+}

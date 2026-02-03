@@ -1,0 +1,28 @@
+{
+  "image_name": "19B093-1-blue.png",
+  "image_size": {
+    "height": 3264,
+    "width": 4908,
+    "channels": 3
+  },
+  "total_grains": 10,
+  "processing_date": "2026-01-19 15:46:23",
+  "system_version": "2.0.0",
+  "area_statistics_pixels": {
+    "total": 903968.0,
+    "average": 90396.8,
+    "min": 75122.0,
+    "max": 117205.0,
+    "std": 16677.796122722903
+  },
+  "scale_detection": {
+    "success": true,
+    "scale_factor_um_per_px": 5.9171597633136095
+  },
+  "area_statistics_um2": {
+    "total": 31650432.40782886,
+    "average": 3165043.240782886,
+    "min": 2630230.0339623964,
+    "max": 4103672.840586814
+  }
+}

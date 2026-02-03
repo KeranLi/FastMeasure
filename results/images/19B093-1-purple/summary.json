@@ -1,0 +1,28 @@
+{
+  "image_name": "19B093-1-purple.png",
+  "image_size": {
+    "height": 3264,
+    "width": 4908,
+    "channels": 3
+  },
+  "total_grains": 7,
+  "processing_date": "2026-01-22 20:46:50",
+  "system_version": "1.0.0",
+  "area_statistics_pixels": {
+    "total": 577837.0,
+    "average": 82548.14285714286,
+    "min": 56422.0,
+    "max": 143293.0,
+    "std": 28950.97756224345
+  },
+  "scale_detection": {
+    "success": true,
+    "scale_factor_um_per_px": 4.166666666666667
+  },
+  "area_statistics_um2": {
+    "total": 10031892.361111114,
+    "average": 1433127.4801587306,
+    "min": 979548.6111111112,
+    "max": 2487725.694444445
+  }
+}
