@@ -1,23 +1,23 @@
-# MobileSAM岩石颗粒自动分割系统配置文件
-# 针对MobileSAM特点优化
+# MobileSAM Rock Grain Auto Segmentation System Configuration
+# Optimized for MobileSAM
 
-# ===== 模型路径配置 =====
+# ===== Model Path Configuration =====
 model_paths:
-  # YOLO模型路径（使用绝对路径）
-  yolo: "../models/best.pt"
-  # MobileSAM模型路径（使用绝对路径）
-  mobilesam: "../models/mobile_sam.pt"
-  # 运行设备：cpu 或 cuda
-  device: "cuda"
+  # YOLO model path
+  yolo: "./models/best_yolo_20260107.pt"
+  # MobileSAM model path
+  mobilesam: "./models/mobile_sam.pt"
+  # Running device: cpu or cuda
+  device: "cpu"
   # MobileSAM模型类型
   sam_type: "vit_t"
 
-# ===== 比例尺检测配置 =====
+# ===== Scale Bar Detection Configuration =====
 scale_detection:
   enabled: true
   known_length_um: 1000.0
   
-  # 检测参数（一般无需修改）
+  # Detection parameters (usually no need to modify)
   detection_params:
     red_lower1: [0, 120, 120]
     red_upper1: [10, 255, 255]

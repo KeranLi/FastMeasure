@@ -158,8 +158,29 @@ python run.py mobilesam --interactive
 | `Shift+S` | Quick save complete results |
 | `C` | Clear all point marks |
 | `R` | Reset interface |
+| `M` | Manual scale calibration (measure known length) |
 | `H` | Show help |
 | `Q` | Quit |
+
+#### Manual Scale Calibration
+
+When automatic scale bar detection fails, you can manually calibrate the scale:
+
+1. Press `M` key to enter scale calibration mode
+2. Click the **start point** of a known-length line (e.g., scale bar, ruler)
+3. Click the **end point** of the line
+4. Enter the **actual length in microns** when prompted
+5. The system will calculate and store the scale factor (um/px)
+
+This allows you to use any known-length feature in the image for calibration.
+
+### Platform Notes
+
+#### macOS Compatibility
+The system is fully compatible with macOS. However, please note:
+- First run may be slower due to model loading
+- Interactive mode requires a display (not supported on remote SSH without X11)
+- File dialogs run on main thread to ensure macOS compatibility
 
 ## Configuration File Guide
 
@@ -190,6 +211,11 @@ output:
   save_statistics: true                      # Save CSV statistics file
   save_summary: true                         # Save JSON summary
 ```
+
+**Note**: 
+- `config.yaml` is used for FastSAM mode (default: CPU)
+- `config_mobilesam.yaml` is used for MobileSAM mode (default: CPU)
+- Change `device` to `cuda` if you have NVIDIA GPU and CUDA installed
 
 ### Geometric Parameter Configuration File (`geometry_config.yaml`)
 
@@ -238,7 +264,8 @@ After processing is complete, the system generates the following files in the ou
 │   ├── __init__.py             # Core module initialization
 │   ├── seg_tools.py            # Shared tool functions
 │   ├── seg_optimize.py         # Shared segmentation optimization
-│   └── cli_base.py             # Shared CLI functions
+│   ├── cli_base.py             # Shared CLI functions
+│   └── scale_calibration.py    # Manual scale calibration (new)
 │
 ├── fastsam/                    # FastSAM module
 │   ├── rock_fastsam_system.py  # FastSAM main system

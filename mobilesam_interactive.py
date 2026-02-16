@@ -68,10 +68,18 @@ try:
     from geometry.export_csv import select_columns_for_grain_statistics_csv
     
     GEOMETRY_AVAILABLE = True
-    print("geometry模块加载成功")
+    print("geometry module loaded successfully")
 except ImportError as e:
     GEOMETRY_AVAILABLE = False
-    print(f"geometry模块不可用: {e}")
+    print(f"geometry module unavailable: {e}")
+
+try:
+    from core.scale_calibration import InteractiveScaleCalibrator, quick_scale_calibration
+    SCALE_CALIBRATION_AVAILABLE = True
+    print("Scale calibration module loaded successfully")
+except ImportError as e:
+    SCALE_CALIBRATION_AVAILABLE = False
+    print(f"Scale calibration module unavailable: {e}")
 
 try:
     from segmenteverygrain import (
@@ -132,6 +140,12 @@ class PureMobileSAMInteractiveEnhanced:
         self.scale_factor = None
         self.scale_detection_success = False
         
+        # Scale calibration
+        self.scale_calibrator = None
+        self.is_scale_calibration_mode = False
+        if SCALE_CALIBRATION_AVAILABLE:
+            self.scale_calibrator = InteractiveScaleCalibrator()
+        
         self.start_time = None
         self.total_grains = 0
         self.total_interactions = 0
@@ -171,34 +185,29 @@ class PureMobileSAMInteractiveEnhanced:
             return False
     
     def _safe_file_dialog(self):
-        """安全的文件选择对话框"""
+        """Safe file selection dialog (macOS compatible)"""
         self.selected_file = None
         
-        def run_file_dialog():
-            try:
-                root = tk.Tk()
-                root.withdraw()
-                root.attributes('-topmost', True)
-                
-                file_path = filedialog.askopenfilename(
-                    title="选择岩石显微图像",
-                    filetypes=[
-                        ("图像文件", "*.tif *.tiff *.jpg *.jpeg *.png *.bmp"),
-                        ("所有文件", "*.*")
-                    ]
-                )
-                
-                if file_path:
-                    self.selected_file = file_path
-                
-                root.destroy()
-            except Exception as e:
-                print(f"文件对话框错误: {e}")
-        
-        dialog_thread = threading.Thread(target=run_file_dialog)
-        dialog_thread.daemon = True
-        dialog_thread.start()
-        dialog_thread.join(timeout=30)
+        try:
+            # For macOS, run in main thread to avoid NSWindow threading issues
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes('-topmost', True)
+            
+            file_path = filedialog.askopenfilename(
+                title="Select Rock Microscopic Image",
+                filetypes=[
+                    ("Image Files", "*.tif *.tiff *.jpg *.jpeg *.png *.bmp"),
+                    ("All Files", "*.*")
+                ]
+            )
+            
+            if file_path:
+                self.selected_file = file_path
+            
+            root.destroy()
+        except Exception as e:
+            print(f"File dialog error: {e}")
         
         return self.selected_file
     
@@ -885,11 +894,27 @@ class PureMobileSAMInteractiveEnhanced:
             print(f"刷新显示失败: {e}")
     
     def _on_mouse_click(self, event):
-        """鼠标点击事件处理"""
+        """Handle mouse click events"""
         if event.inaxes != self.ax or event.xdata is None or event.ydata is None:
             return
         
         x, y = event.xdata, event.ydata
+        
+        # Check if in scale calibration mode
+        if self.is_scale_calibration_mode and self.scale_calibrator:
+            calibration_complete = self.scale_calibrator.on_click(event)
+            if calibration_complete:
+                # Calibration finished, get result
+                scale_factor = self.scale_calibrator.get_result()
+                if scale_factor:
+                    self.scale_factor = scale_factor
+                    self.scale_detection_success = True
+                    print(f"Scale calibration complete! Factor: {scale_factor:.4f} um/px")
+                self.is_scale_calibration_mode = False
+                # Restore title
+                self.ax.set_title(self.original_title, fontsize=16)
+                self.fig.canvas.draw()
+            return
         
         clicked_grain_id = self._get_grain_at_point(x, y)
         
@@ -935,8 +960,10 @@ class PureMobileSAMInteractiveEnhanced:
             print("退出交互界面")
             self.gui_running = False
             plt.close(self.fig)
-        elif event.key == 'h':  # 显示帮助
+        elif event.key == 'h':  # Show help
             self._show_help()
+        elif event.key == 'm':  # Scale calibration mode
+            self._start_scale_calibration()
         elif event.key == 'S':  # Shift+S：快速保存完整结果
             print("快速保存完整结果...")
             self._generate_complete_outputs()
@@ -1014,39 +1041,70 @@ class PureMobileSAMInteractiveEnhanced:
         
         print("界面已完全重置")
     
+    def _start_scale_calibration(self):
+        """Start scale calibration mode"""
+        if not SCALE_CALIBRATION_AVAILABLE:
+            messagebox.showerror("Error", "Scale calibration module not available")
+            return
+            
+        if self.is_scale_calibration_mode:
+            print("Already in scale calibration mode")
+            return
+        
+        self.is_scale_calibration_mode = True
+        self.original_title = self.ax.get_title()
+        
+        print("\n" + "="*60)
+        print("SCALE CALIBRATION MODE")
+        print("="*60)
+        print("1. Click the START point of a known-length line")
+        print("2. Click the END point of the line")
+        print("3. Enter the actual length in microns when prompted")
+        print("Press 'Escape' to cancel")
+        print("="*60)
+        
+        self.scale_calibrator.calibrate_scale(self.image, self.ax, self.fig)
+        
+        # Update title
+        self.ax.set_title(self.original_title + " [SCALE CALIBRATION MODE - Click two points]", 
+                         fontsize=14, color='red', fontweight='bold')
+        self.fig.canvas.draw()
+    
     def _show_help(self):
-        """显示帮助信息"""
+        """Show help information"""
         help_text = (
-            " 交互指南:\n\n"
-            "鼠标操作:\n"
-            "• 左键点击（绿色圆点）: 标记颗粒位置\n"
-            "• 右键点击（红色叉号）: 标记非颗粒位置\n\n"
-            "键盘快捷键:\n"
-            "• 's': 显示保存选项\n"
-            "• 'S' (Shift+s): 快速保存完整结果\n"
-            "• 'x': 删除最后一个颗粒\n"
-            "• 'd': 删除所有颗粒\n"
-            "• 'c': 清除点标记\n"
-            "• 'r': 重置界面\n"
-            "• 'q': 退出程序\n"
-            "• 'h': 显示此帮助\n"
+            "Interactive Guide:\n\n"
+            "Mouse Actions:\n"
+            "• Left click (green dot): Mark grain position (foreground)\n"
+            "• Right click (red x): Mark non-grain position (background)\n\n"
+            "Keyboard Shortcuts:\n"
+            "• 's': Show save options\n"
+            "• 'S' (Shift+s): Quick save complete results\n"
+            "• 'x': Delete last grain\n"
+            "• 'd': Delete all grains\n"
+            "• 'c': Clear point markers\n"
+            "• 'r': Reset interface\n"
+            "• 'm': Manual scale calibration (measure known length)\n"
+            "• 'q': Quit program\n"
+            "• 'h': Show this help\n"
         )
         
-        messagebox.showinfo("交互式分割帮助", help_text)
+        messagebox.showinfo("Interactive Segmentation Help", help_text)
     
     def _show_help_text_fixed(self):
         """在界面上显示帮助文本"""
         help_text = (
-            "增强版交互指南：\n"
-            "• 左键点击：标记颗粒位置（前景点）\n"
-            "• 右键点击：标记非颗粒位置（背景点）\n"
-            "• 's'键：显示保存选项\n"
-            "• 'S'键 (Shift+s)：快速保存完整结果\n"
-            "• 'x'键：删除最后一个颗粒\n"
-            "• 'd'键：删除所有颗粒\n"
-            "• 'c'键：清除点标记\n"
-            "• 'r'键：重置界面\n"
-            "• 'q'键：退出程序\n"
+            "Enhanced Interactive Guide:\n"
+            "• Left click: Mark grain position (foreground point)\n"
+            "• Right click: Mark non-grain position (background point)\n"
+            "• 's' key: Show save options\n"
+            "• 'S' key (Shift+s): Quick save complete results\n"
+            "• 'x' key: Delete last grain\n"
+            "• 'd' key: Delete all grains\n"
+            "• 'c' key: Clear point markers\n"
+            "• 'r' key: Reset interface\n"
+            "• 'm' key: Manual scale calibration\n"
+            "• 'q' key: Exit program\n"
         )
         
         try:

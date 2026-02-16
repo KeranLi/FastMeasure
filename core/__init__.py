@@ -12,6 +12,10 @@ from .cli_base import (
     print_summary,
     print_welcome
 )
+from .scale_calibration import (
+    InteractiveScaleCalibrator,
+    quick_scale_calibration
+)
 
 __all__ = [
     # Tool classes
@@ -27,4 +31,7 @@ __all__ = [
     'update_config_from_args',
     'print_summary',
     'print_welcome',
+    # Scale calibration
+    'InteractiveScaleCalibrator',
+    'quick_scale_calibration',
 ]

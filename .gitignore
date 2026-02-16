@@ -1,6 +1,8 @@
 # 忽略模型权重文件和目录
 models/
 results/
+interactive_fastsam_results/
+interactive_results/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

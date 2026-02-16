@@ -260,6 +260,39 @@ All optimizations maintain backward compatibility:
 - All emoji characters removed
 - README.md fully translated to English
 
+## 2026-02-16 - Bug Fixes and Compatibility Improvements
+
+- **Modifier:** AI Assistant
+- **Modification Type:** Bug Fixes
+- **Involved Files:** `run_mobilesam.py`, `run_fastsam.py`, `config_mobilesam.yaml`, `mobilesam_interactive.py`, `fastsam_interactive.py`
+
+### Fixes
+
+#### 1. Default Config File Fix
+- **Issue**: `run.py mobilesam` used wrong default config file (`config.yaml` instead of `config_mobilesam.yaml`)
+- **Solution**: Added `parser.set_defaults(config=DEFAULT_CONFIG)` in both startup scripts
+- **Result**: Each mode now uses correct config file automatically
+
+#### 2. Model Path Fix
+- **Issue**: `config_mobilesam.yaml` used incorrect relative paths (`../models/`) and wrong YOLO model filename (`best.pt`)
+- **Solution**: Updated to correct paths (`./models/`) and correct filename (`best_yolo_20260107.pt`)
+- **Result**: Models load correctly on all platforms
+
+#### 3. macOS GUI Threading Fix
+- **Issue**: File dialog crashed on macOS with `NSWindow should only be instantiated on the main thread` error
+- **Solution**: Removed `threading.Thread` wrapper from `_safe_file_dialog()` methods, run dialogs directly in main thread
+- **Files Modified**: 
+  - `mobilesam_interactive.py`
+  - `fastsam_interactive.py`
+- **Result**: File dialogs work correctly on macOS
+
+#### 4. CPU Mode Default
+- **Issue**: Default config used CUDA (`device: cuda`) which fails on Mac without NVIDIA GPU
+- **Solution**: Changed default to `device: cpu` in `config_mobilesam.yaml`
+- **Result**: Works out of the box on Mac and CPU-only systems
+
+---
+
 ### Future Optimization Suggestions
 
 1. **Merge interactive scripts** - Combine 4 interactive scripts into 1
