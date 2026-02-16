@@ -507,6 +507,81 @@ Key improvements in FastMeasure:
 - **Unified Architecture**: Modular core library with command-line interface
 - **Cross-Platform**: Full macOS and Linux/Windows support
 
+## Building Standalone Executable
+
+FastMeasure can be packaged as a standalone executable for Windows, allowing users to run it without installing Python.
+
+### Prerequisites
+
+```bash
+# Install PyInstaller
+pip install pyinstaller
+```
+
+### Build Instructions
+
+#### Method 1: Using Build Script (Recommended)
+
+```bash
+# Run the build script
+python build_exe.py
+```
+
+This will:
+1. Clean previous builds
+2. Package all Python dependencies
+3. Include model configs and core modules
+4. Create `dist/FastMeasure/` folder with executable
+
+#### Method 2: Manual Build
+
+```bash
+# Build one-directory (recommended, faster startup)
+pyinstaller --name FastMeasure \
+            --windowed \
+            --onedir \
+            --add-data "core;core" \
+            --add-data "fastsam;fastsam" \
+            --add-data "mobilesam;mobilesam" \
+            --add-data "geometry;geometry" \
+            --add-data "config.yaml;." \
+            --hidden-import ultralytics \
+            --hidden-import torch \
+            gui_launcher.py
+```
+
+### Distribution
+
+After building:
+
+```
+dist/
+└── FastMeasure/
+    ├── FastMeasure.exe      # Main executable
+    ├── models/              # Place model files here
+    ├── results/             # Output directory
+    └── _internal/           # Python libraries
+```
+
+**Before distributing:**
+1. Download model files (see [Model Files](#model-files))
+2. Place in `dist/FastMeasure/models/`
+3. Zip the entire `FastMeasure/` folder
+4. Share the zip file with users
+
+### Creating Windows Installer (Optional)
+
+1. Install [Inno Setup](https://jrsoftware.org/isinfo.php)
+2. Open `installer.iss` in Inno Setup Compiler
+3. Build to create `FastMeasure_Setup.exe`
+
+### Notes
+
+- **Executable size**: ~500MB-1GB (includes Python + PyTorch)
+- **Startup time**: First launch may take 10-30 seconds (model loading)
+- **CPU mode**: The executable defaults to CPU mode for compatibility
+- **Model files**: Not included in build (too large), must be downloaded separately
+
 ## License
 
 [LICENSE](LICENSE)

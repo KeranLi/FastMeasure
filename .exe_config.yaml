@@ -1,0 +1,89 @@
+# FastMeasure Executable Configuration
+# This file is used when running as a standalone executable
+
+# Application Settings
+app:
+  name: "FastMeasure"
+  version: "1.0.0"
+  
+  # Window settings
+  window:
+    width: 800
+    height: 700
+    min_width: 700
+    min_height: 600
+    
+  # Default settings
+  defaults:
+    model: "fastsam"      # fastsam or mobilesam
+    mode: "auto"          # auto, batch, or interactive
+    device: "cpu"         # cpu or cuda
+
+# Model Configuration
+models:
+  # Model directory (relative to executable)
+  directory: "models"
+  
+  # Required models
+  required:
+    - yolo
+  
+  # Optional models
+  optional:
+    - fastsam
+    - mobilesam
+  
+  # Model definitions
+  definitions:
+    yolo:
+      name: "YOLO Detection Model"
+      filename: "best_yolo_20260107.pt"
+      description: "Main detection model"
+      
+    fastsam:
+      name: "FastSAM"
+      filename: "FastSAM-s.pt"
+      description: "Fast segmentation"
+      
+    mobilesam:
+      name: "MobileSAM"
+      filename: "mobile_sam.pt"
+      description: "High-quality segmentation"
+
+# Output Configuration
+output:
+  directory: "results"
+  
+  # Subdirectories
+  subdirs:
+    fastsam: "fastsam"
+    mobilesam: "mobilesam"
+    logs: "logs"
+
+# System Configuration
+system:
+  # Check for updates
+  check_updates: true
+  
+  # Enable GPU if available
+  auto_gpu: false
+  
+  # Log level
+  log_level: "INFO"
+  
+  # Temporary directory
+  temp_dir: "temp"
+
+# UI Configuration
+ui:
+  # Theme
+  theme: "default"
+  
+  # Language
+  language: "en"
+  
+  # Show tips on startup
+  show_tips: true
+  
+  # Recent files limit
+  recent_files_limit: 10
