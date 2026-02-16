@@ -1,16 +1,16 @@
 """
-UltraFastSAM生产级系统
+UltraFastSAM生产级系统 - 支持GUI交互模式）
 文件名：rock_fastsam_system.py
-功能：完整的生产级岩石颗粒分割系统
+功能：完整的颗粒分割系统，支持GUI交互模式
 """
 
 import os
 import sys
+from pathlib import Path
 import time
 import logging
 import traceback
 from datetime import datetime
-from pathlib import Path
 from typing import List, Tuple, Optional, Dict, Any
 import json
 import yaml
@@ -22,9 +22,17 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
+# 添加项目根目录到系统路径，以便能够从根目录导入模块
+current_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(current_dir))
+
 # 导入核心模块
-from .yolo_fastsam import UltraSegmentationPipeline
-from .seg_tools import ImageProcessor, FileUtils, PerformanceMonitor
+try:
+    from fastsam.yolo_fastsam import UltraSegmentationPipeline
+    from fastsam.seg_tools import ImageProcessor, FileUtils, PerformanceMonitor
+except ImportError as e:
+    print(f"导入核心模块失败: {e}")
+    raise
 
 # 导入比例尺检测模块
 try:
@@ -45,18 +53,40 @@ except ImportError as e:
     print(f"导入颗粒标注模块失败: {e}")
 
 # 导入多种几何尺寸计算函数
-from geometry.grain_metric import GrainShapeMetrics
-from geometry.config_loader import load_geometry_config
-from geometry.export_csv import select_columns_for_grain_statistics_csv
+try:
+    from geometry.grain_metric import GrainShapeMetrics
+    from geometry.config_loader import load_geometry_config
+    from geometry.export_csv import select_columns_for_grain_statistics_csv
+    GEOMETRY_AVAILABLE = True
+    print("成功导入模块")
+except ImportError as e:
+    GEOMETRY_AVAILABLE = False
+    print(f"导入geometry模块失败: {e}")
+
+# 导入FastSAM交互式模块 - 现在从项目根目录导入
+try:
+    # 从项目根目录导入（新位置）
+    from fastsam_interactive import PureFastSAMInteractiveEnhanced
+    FASTSAM_INTERACTIVE_AVAILABLE = True
+    print("成功导入FastSAM交互式模块（从项目根目录）")
+except ImportError as e:
+    # 如果从项目根目录导入失败，尝试从当前目录导入（旧位置）
+    try:
+        from .fastsam_interactive import PureFastSAMInteractiveEnhanced
+        FASTSAM_INTERACTIVE_AVAILABLE = True
+        print("成功导入FastSAM交互式模块（从fastsam子目录）")
+    except ImportError as e2:
+        FASTSAM_INTERACTIVE_AVAILABLE = False
+        print(f"导入FastSAM交互式模块失败: {e}")
 
 class RockUltraSystem:
-    """UltraFastSAM生产级岩石分割系统"""
+    """UltraFastSAM生产级岩石分割系统 - 支持GUI交互模式"""
     
     VERSION = "1.0.0"
     
     def __init__(self, config_path: str = "config.yaml"):
         """
-        初始化UltraFastSAM系统
+        初始化UltraFastSAM系统（支持GUI交互模式）
         
         Args:
             config_path: 配置文件路径
@@ -69,7 +99,12 @@ class RockUltraSystem:
         self.config = self._load_config(config_path)
 
         # 读取 geometry_config
-        self.geometry_config = load_geometry_config("geometry_config.yaml")
+        try:
+            self.geometry_config = load_geometry_config("geometry_config.yaml")
+            print("geometry配置加载成功")
+        except Exception as e:
+            self.geometry_config = {}
+            print(f"加载geometry配置失败: {e}")
         
         # 设置输出目录
         self.output_root = Path(self.config['output']['root_dir'])
@@ -98,9 +133,13 @@ class RockUltraSystem:
         self.performance_monitor = PerformanceMonitor()
         self.processing_history = []
         
+        # GUI交互系统
+        self.interactive_system = None
+        
         self.logger.info(f"UltraFastSAM系统初始化完成")
         self.logger.info(f"输出目录: {self.output_root}")
         self.logger.info(f"配置文件: {config_path}")
+        self.logger.info(f"GUI交互模式: {'可用' if FASTSAM_INTERACTIVE_AVAILABLE else '不可用'}")
     
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         """加载配置文件"""
@@ -363,9 +402,13 @@ class RockUltraSystem:
             result['success'] = True
 
             # 计算颗粒的形状参数
-            #print(grain_data.columns)  # 打印列名以确认是否包含 'coordinates' 列
-            shape_calculator = GrainShapeMetrics(grain_data)  # 创建GrainShapeMetrics实例
-            grain_data = shape_calculator.compute_all_metrics()  # 计算所有形状参数
+            if GEOMETRY_AVAILABLE and grain_data is not None and not grain_data.empty:
+                try:
+                    shape_calculator = GrainShapeMetrics(grain_data)
+                    grain_data = shape_calculator.compute_all_metrics()
+                    self.logger.info("高级几何参数计算完成")
+                except Exception as e:
+                    self.logger.warning(f"几何参数计算失败: {e}")
             
             # 保存结果文件
             output_files = []
@@ -447,15 +490,25 @@ class RockUltraSystem:
                 
                 # 保存CSV
                 csv_path = output_dir / "grain_statistics.csv"
-                #grain_data.to_csv(csv_path, index=False, encoding='utf-8')
-                grain_data_to_save = select_columns_for_grain_statistics_csv(
-                    grain_data,
-                    self.geometry_config,
-                    strict=False
-                )
                 
-                grain_data_to_save.to_csv(csv_path, index=False, encoding="utf-8")
-
+                if GEOMETRY_AVAILABLE and self.geometry_config:
+                    try:
+                        grain_data_to_save = select_columns_for_grain_statistics_csv(
+                            grain_data,
+                            self.geometry_config,
+                            strict=False
+                        )
+                        
+                        if grain_data_to_save is not None and not grain_data_to_save.empty:
+                            grain_data_to_save.to_csv(csv_path, index=False, encoding='utf-8')
+                        else:
+                            grain_data.to_csv(csv_path, index=False, encoding='utf-8')
+                    except Exception as e:
+                        self.logger.warning(f"配置筛选失败: {e}")
+                        grain_data.to_csv(csv_path, index=False, encoding='utf-8')
+                else:
+                    grain_data.to_csv(csv_path, index=False, encoding='utf-8')
+                
                 output_files.append(str(csv_path))
                 self.logger.info(f"颗粒数据保存至: {csv_path}")
                 
@@ -468,6 +521,7 @@ class RockUltraSystem:
                     json_path = output_dir / "summary.json"
                     FileUtils.safe_save_json(summary, str(json_path))
                     output_files.append(str(json_path))
+                    self.logger.info(f"JSON摘要保存至: {json_path}")
             
             # 保存性能数据
             if self.config['output']['save_performance']:
@@ -475,6 +529,7 @@ class RockUltraSystem:
                 perf_path = output_dir / "performance.json"
                 FileUtils.safe_save_json(performance_data, str(perf_path))
                 output_files.append(str(perf_path))
+                self.logger.info(f"性能数据保存至: {perf_path}")
             
             # 保存调试信息（如果需要）
             if self.config['output'].get('save_debug_info', False):
@@ -488,13 +543,14 @@ class RockUltraSystem:
                 debug_path = output_dir / "debug_info.json"
                 FileUtils.safe_save_json(debug_info, str(debug_path))
                 output_files.append(str(debug_path))
+                self.logger.info(f"调试信息保存至: {debug_path}")
             
             result['output_files'] = output_files
             
         except Exception as e:
             result['success'] = False
             result['error_message'] = str(e)
-            self.logger.error(f"❌ 图片处理失败: {image_path}")
+            self.logger.error(f"图片处理失败: {image_path}")
             self.logger.error(f"错误信息: {e}")
             self.logger.error(traceback.format_exc())
         
@@ -536,13 +592,13 @@ class RockUltraSystem:
                 'width': image.shape[1],
                 'channels': image.shape[2]
             },
-            'total_grains': int(len(grain_data)),
+            'total_grains': int(len(grain_data)) if grain_data is not None and not grain_data.empty else 0,
             'processing_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             'system_version': self.VERSION
         }
         
         # 面积统计
-        if 'area' in grain_data.columns:
+        if grain_data is not None and not grain_data.empty and 'area' in grain_data.columns:
             grain_data['area'] = pd.to_numeric(grain_data['area'], errors='coerce')
             valid_areas = grain_data['area'].dropna()
             
@@ -562,7 +618,7 @@ class RockUltraSystem:
                 'scale_factor_um_per_px': float(scale_factor)
             }
             
-            if 'area_um2' in grain_data.columns:
+            if grain_data is not None and 'area_um2' in grain_data.columns:
                 grain_data['area_um2'] = pd.to_numeric(grain_data['area_um2'], errors='coerce')
                 valid_areas_um2 = grain_data['area_um2'].dropna()
                 
@@ -733,7 +789,7 @@ class RockUltraSystem:
     def show_system_info(self):
         """显示系统信息"""
         print("=" * 70)
-        print(f"🏭 UltraFastSAM岩石颗粒自动分割系统 v{self.VERSION}")
+        print(f"UltraFastSAM岩石颗粒自动分割系统 v{self.VERSION}")
         print("=" * 70)
         print(f"系统时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"输出目录: {self.output_root}")
@@ -759,7 +815,44 @@ class RockUltraSystem:
         else:
             print(f"颗粒标注: 已禁用")
         
+        print(f"GUI交互模式: {'可用' if FASTSAM_INTERACTIVE_AVAILABLE else '不可用'}")
         print("=" * 70)
+    
+    def run_interactive_mode(self, image_path: str = None):
+        """运行FastSAM交互式模式"""
+        if not FASTSAM_INTERACTIVE_AVAILABLE:
+            print("FastSAM交互式模块不可用")
+            print("请检查 fastsam_interactive.py 文件是否存在")
+            return
+        
+        print("启动增强版交互式FastSAM系统...")
+        
+        try:
+            model_paths = self.config['model_paths']
+            
+            # 检查模型文件是否存在
+            fastsam_path = model_paths.get('fastsam', 'models/FastSAM-s.pt')
+            if not Path(fastsam_path).exists():
+                print(f"FastSAM模型文件不存在: {fastsam_path}")
+                print("请检查模型文件路径或重新下载模型")
+                return
+            
+            # 创建交互式系统实例
+            interactive_system = PureFastSAMInteractiveEnhanced(
+                model_path=fastsam_path,
+                device=model_paths.get('device', 'cpu')
+            )
+            
+            # 运行交互式模式
+            interactive_system.run_interactive_mode(image_path)
+            
+            # 保存交互式系统的引用
+            self.interactive_system = interactive_system
+            
+        except Exception as e:
+            print(f"增强版交互式模式运行失败: {e}")
+            import traceback
+            traceback.print_exc()
     
     def get_processing_history(self) -> List[Dict[str, Any]]:
         """获取处理历史"""
