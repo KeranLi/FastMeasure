@@ -71,6 +71,9 @@ def parse_arguments():
         version=VERSION
     )
     
+    # Update default config for FastSAM
+    parser.set_defaults(config=DEFAULT_CONFIG)
+    
     # FastSAM specific parameters
     parser.add_argument(
         "--gui-backend",

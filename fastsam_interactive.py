@@ -1,7 +1,7 @@
 """
-FastSAM增强版交互式界面模块 - 修复版
-文件名：fastsam_interactive.py
-功能：基于FastSAM特性的交互式分割，修复点选、卡顿、偏移问题
+FastSAM Enhanced Interactive Interface Module - Fixed Version
+File: fastsam_interactive.py
+Function: Interactive segmentation based on FastSAM features, fixing point selection, lag, and offset issues
 """
 
 import os
@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib
 
 def setup_backend():
-    """智能设置后端，优先GUI后端"""
+    """Smart backend setup, prioritize GUI backends"""
     try:
         import tkinter
         matplotlib.use('TkAgg')
@@ -48,18 +48,18 @@ from typing import List, Dict, Optional, Tuple, Any
 import warnings
 warnings.filterwarnings('ignore')
 
-# 导入FastSAM
+# Import FastSAM
 try:
     from ultralytics import FastSAM
     FASTSAM_AVAILABLE = True
-    print("使用Ultralytics FastSAM")
+    print("Using Ultralytics FastSAM")
 except ImportError as e:
     FASTSAM_AVAILABLE = False
-    print(f"FastSAM库未安装: {e}")
+    print(f"FastSAM library not installed: {e}")
 
-# 强制导入项目一函数
+# Force import project one functions
 print("=" * 60)
-print("配置：强制使用项目一函数")
+print("Config: Force using project one functions")
 print("=" * 60)
 
 import sys
@@ -90,9 +90,8 @@ except ImportError as e:
     print("程序需要项目一函数才能运行")
     sys.exit(1)
 
-# 导入几何计算模块
+# Import geometry calculation modules
 try:
-    # 由于fastsam_interactive.py在项目根目录，geometry模块路径需要调整
     geometry_dir = project_root / "geometry"
     if str(geometry_dir) not in sys.path:
         sys.path.insert(0, str(geometry_dir))
@@ -102,10 +101,18 @@ try:
     from geometry.export_csv import select_columns_for_grain_statistics_csv
     
     GEOMETRY_AVAILABLE = True
-    print("geometry模块加载成功")
+    print("geometry module loaded successfully")
 except ImportError as e:
     GEOMETRY_AVAILABLE = False
-    print(f"geometry模块不可用: {e}")
+    print(f"geometry module unavailable: {e}")
+
+try:
+    from core.scale_calibration import InteractiveScaleCalibrator, quick_scale_calibration
+    SCALE_CALIBRATION_AVAILABLE = True
+    print("Scale calibration module loaded successfully")
+except ImportError as e:
+    SCALE_CALIBRATION_AVAILABLE = False
+    print(f"Scale calibration module unavailable: {e}")
 
 print("=" * 60)
 
@@ -175,21 +182,28 @@ class PureFastSAMInteractiveEnhanced:
             except Exception as e:
                 print(f"加载geometry配置失败: {e}")
         
-        # 性能统计
+        # Performance statistics
         self.start_time = None
         self.total_grains = 0
         self.total_interactions = 0
         
         self.gui_running = False
         
+        # Scale calibration
+        self.scale_calibrator = None
+        self.is_scale_calibration_mode = False
+        self.scale_factor = None
+        if SCALE_CALIBRATION_AVAILABLE:
+            self.scale_calibrator = InteractiveScaleCalibrator()
+        
         print("=" * 70)
-        print("FastSAM交互式系统（修复版）")
+        print("FastSAM Interactive System (Fixed Version)")
         print("=" * 70)
         
         self._load_fastsam_model()
     
     def _load_fastsam_model(self) -> bool:
-        """加载FastSAM模型"""
+        """Load FastSAM model"""
         if not FASTSAM_AVAILABLE:
             print("FastSAM库不可用")
             return False
@@ -322,34 +336,29 @@ class PureFastSAMInteractiveEnhanced:
         self._run_global_inference()
     
     def _safe_file_dialog(self):
-        """安全的文件选择对话框"""
+        """Safe file selection dialog (macOS compatible)"""
         self.selected_file = None
         
-        def run_file_dialog():
-            try:
-                root = tk.Tk()
-                root.withdraw()
-                root.attributes('-topmost', True)
-                
-                file_path = filedialog.askopenfilename(
-                    title="选择岩石显微图像",
-                    filetypes=[
-                        ("图像文件", "*.tif *.tiff *.jpg *.jpeg *.png *.bmp"),
-                        ("所有文件", "*.*")
-                    ]
-                )
-                
-                if file_path:
-                    self.selected_file = file_path
-                
-                root.destroy()
-            except Exception as e:
-                print(f"文件对话框错误: {e}")
-        
-        dialog_thread = threading.Thread(target=run_file_dialog)
-        dialog_thread.daemon = True
-        dialog_thread.start()
-        dialog_thread.join(timeout=30)
+        try:
+            # For macOS, run in main thread to avoid NSWindow threading issues
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes('-topmost', True)
+            
+            file_path = filedialog.askopenfilename(
+                title="Select Rock Microscopic Image",
+                filetypes=[
+                    ("Image Files", "*.tif *.tiff *.jpg *.jpeg *.png *.bmp"),
+                    ("All Files", "*.*")
+                ]
+            )
+            
+            if file_path:
+                self.selected_file = file_path
+            
+            root.destroy()
+        except Exception as e:
+            print(f"File dialog error: {e}")
         
         return self.selected_file
     
@@ -730,20 +739,36 @@ class PureFastSAMInteractiveEnhanced:
             print(f"刷新显示失败: {e}")
     
     def _on_mouse_press(self, event):
-        """鼠标按下事件"""
+        """Handle mouse press events"""
         if event.inaxes != self.ax or event.xdata is None or event.ydata is None:
+            return
+        
+        # Check if in scale calibration mode
+        if self.is_scale_calibration_mode and self.scale_calibrator:
+            calibration_complete = self.scale_calibrator.on_click(event)
+            if calibration_complete:
+                # Calibration finished, get result
+                scale_factor = self.scale_calibrator.get_result()
+                if scale_factor:
+                    self.scale_factor = scale_factor
+                    print(f"Scale calibration complete! Factor: {scale_factor:.4f} um/px")
+                self.is_scale_calibration_mode = False
+                # Restore title
+                image_name = Path(self.image_path).name if self.image_path else "Unnamed"
+                self.ax.set_title(f"FastSAM Interactive - {image_name}", fontsize=16)
+                self.fig.canvas.draw()
             return
         
         current_time = time.time()
         if current_time - self.last_draw_time < self.draw_interval:
-            return  # 避免过快响应
+            return  # Avoid too fast response
         
-        if event.button == 1:  # 左键：开始绘制框或点选
+        if event.button == 1:  # Left button: start drawing box or point selection
             self.drawing_box = True
             self.box_start = (event.xdata, event.ydata)
             self.box_end = (event.xdata, event.ydata)
             
-            # 清除之前的框
+            # Clear previous box
             if self.box_artist:
                 self.box_artist.remove()
                 self.box_artist = None
@@ -888,24 +913,55 @@ class PureFastSAMInteractiveEnhanced:
             else:
                 print("局部推理也未生成掩码")
     
+    def _start_scale_calibration(self):
+        """Start scale calibration mode"""
+        if not SCALE_CALIBRATION_AVAILABLE:
+            messagebox.showerror("Error", "Scale calibration module not available")
+            return
+            
+        if self.is_scale_calibration_mode:
+            print("Already in scale calibration mode")
+            return
+        
+        self.is_scale_calibration_mode = True
+        
+        print("\n" + "="*60)
+        print("SCALE CALIBRATION MODE")
+        print("="*60)
+        print("1. Click the START point of a known-length line")
+        print("2. Click the END point of the line")
+        print("3. Enter the actual length in microns when prompted")
+        print("Press 'Escape' to cancel")
+        print("="*60)
+        
+        self.scale_calibrator.calibrate_scale(self.image, self.ax, self.fig)
+        
+        # Update title
+        image_name = Path(self.image_path).name if self.image_path else "Unnamed"
+        self.ax.set_title(f"FastSAM Interactive - {image_name} [SCALE CALIBRATION - Click two points]", 
+                         fontsize=14, color='red', fontweight='bold')
+        self.fig.canvas.draw()
+    
     def _on_key_press(self, event):
-        """键盘按键事件处理"""
-        if event.key == 'x':  # 删除最后一个颗粒
+        """Handle keyboard press events"""
+        if event.key == 'x':  # Delete last grain
             self._delete_last_grain()
-        elif event.key == 'd':  # 删除所有颗粒
+        elif event.key == 'd':  # Delete all grains
             self._delete_all_grains()
-        elif event.key == 's':  # 保存结果
+        elif event.key == 's':  # Save results
             self._show_save_options()
-        elif event.key == 'r':  # 重新开始
+        elif event.key == 'r':  # Reset
             self._reset_interface()
-        elif event.key == 'q':  # 退出
-            print("退出交互界面")
+        elif event.key == 'q':  # Quit
+            print("Exiting interactive interface")
             self.gui_running = False
             plt.close(self.fig)
-        elif event.key == 'h':  # 显示帮助
+        elif event.key == 'h':  # Show help
             self._show_help()
-        elif event.key == 'S':  # Shift+S：快速保存完整结果
-            print("快速保存完整结果...")
+        elif event.key == 'm':  # Manual scale calibration
+            self._start_scale_calibration()
+        elif event.key == 'S':  # Shift+S: Quick save complete results
+            print("Quick saving complete results...")
             self._generate_complete_outputs()
     
     def _delete_last_grain(self):
@@ -950,36 +1006,38 @@ class PureFastSAMInteractiveEnhanced:
         print("已删除所有颗粒")
     
     def _show_help(self):
-        """显示帮助信息"""
+        """Show help information"""
         help_text = (
-            "FastSAM交互式分割指南:\n\n"
-            "鼠标操作:\n"
-            "• 左键拖动: 绘制选择框\n"
-            "• 左键单击: 点选颗粒（小范围）\n\n"
-            "键盘快捷键:\n"
-            "• 's': 显示保存选项\n"
-            "• 'S' (Shift+s): 快速保存完整结果\n"
-            "• 'x': 删除最后一个颗粒\n"
-            "• 'd': 删除所有颗粒\n"
-            "• 'r': 重置界面\n"
-            "• 'q': 退出程序\n"
-            "• 'h': 显示此帮助\n"
+            "FastSAM Interactive Segmentation Guide:\n\n"
+            "Mouse Actions:\n"
+            "• Left drag: Draw selection box\n"
+            "• Left click: Point select grain (small area)\n\n"
+            "Keyboard Shortcuts:\n"
+            "• 's': Show save options\n"
+            "• 'S' (Shift+s): Quick save complete results\n"
+            "• 'x': Delete last grain\n"
+            "• 'd': Delete all grains\n"
+            "• 'r': Reset interface\n"
+            "• 'm': Manual scale calibration\n"
+            "• 'q': Quit program\n"
+            "• 'h': Show this help\n"
         )
         
-        messagebox.showinfo("FastSAM交互式分割帮助", help_text)
+        messagebox.showinfo("FastSAM Interactive Help", help_text)
     
     def _show_help_text_fixed(self):
-        """在界面上显示帮助文本"""
+        """Show help text on interface"""
         help_text = (
-            "FastSAM交互指南：\n"
-            "• 左键拖动：绘制选择框\n"
-            "• 左键单击：点选颗粒（小范围）\n"
-            "• 's'键：显示保存选项\n"
-            "• 'S'键 (Shift+s)：快速保存完整结果\n"
-            "• 'x'键：删除最后一个颗粒\n"
-            "• 'd'键：删除所有颗粒\n"
-            "• 'r'键：重置界面\n"
-            "• 'q'键：退出程序\n"
+            "FastSAM Interactive Guide:\n"
+            "• Left drag: Draw selection box\n"
+            "• Left click: Point select grain\n"
+            "• 's' key: Show save options\n"
+            "• 'S' key (Shift+s): Quick save\n"
+            "• 'x' key: Delete last grain\n"
+            "• 'd' key: Delete all grains\n"
+            "• 'r' key: Reset interface\n"
+            "• 'm' key: Manual scale calibration\n"
+            "• 'q' key: Exit program\n"
         )
         
         try:
