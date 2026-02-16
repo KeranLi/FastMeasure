@@ -1,7 +1,7 @@
 """
-MobileSAM + YOLO 岩石颗粒分割流水线
-文件名：yolo_mobilesam.py
-功能：整合YOLO检测和MobileSAM分割，提供端到端岩石颗粒分割
+MobileSAM + YOLO Rock Grain Segmentation Pipeline
+Filename: yolo_mobilesam.py
+Function: Integrates YOLO detection and MobileSAM segmentation, providing end-to-end rock grain segmentation
 """
 
 import numpy as np
@@ -26,7 +26,7 @@ import cv2
 
 
 class MobileSegmentationPipeline:
-    """MobileSAM + YOLO 分割流水线"""
+    """MobileSAM + YOLO Segmentation Pipeline"""
     
     def __init__(self, config: Dict = None):
         self.config = config or {}
@@ -38,25 +38,25 @@ class MobileSegmentationPipeline:
         self._seg1_available = False
         self._seg1_functions = {}
         
-        print("MobileSegmentationPipeline初始化完成")
+        print("MobileSegmentationPipeline initialization complete")
     
     def load_models(self, yolo_path: str, mobilesam_path: str, 
                    device: str = "cuda", model_type: str = "vit_t") -> bool:
         start_time = time.time()
         
         try:
-            print(f"加载YOLO模型: {yolo_path}")
+            print(f"Loading YOLO model: {yolo_path}")
             self.yolo_model = YOLO(yolo_path)
             self.yolo_model.to(device)
-            print("YOLO模型加载成功")
+            print("YOLO model loaded successfully")
             
-            print(f"加载MobileSAM模型: {mobilesam_path}")
+            print(f"Loading MobileSAM model: {mobilesam_path}")
             self.mobilesam_engine = MobileSAMEngine(
                 model_path=mobilesam_path,
                 device=device,
                 model_type=model_type
             )
-            print("MobileSAM引擎加载成功")
+            print("MobileSAM engine loaded successfully")
             
             self.performance_stats['model_load_time'] = time.time() - start_time
             self.performance_stats['device'] = device
@@ -65,7 +65,7 @@ class MobileSegmentationPipeline:
             return True
             
         except Exception as e:
-            print(f"模型加载失败: {e}")
+            print(f"Model loading failed: {e}")
             self.performance_stats['models_loaded'] = False
             return False
     
@@ -96,14 +96,14 @@ class MobileSegmentationPipeline:
                 'merge_overlapping_polygons': merge_overlapping_polygons
             }
             self._seg1_available = True
-            print("segmenteverygrain模块加载成功")
+            print("segmenteverygrain module loaded successfully")
             
         except ImportError as e:
             self._seg1_available = False
-            print(f"segmenteverygrain导入失败: {e}")
+            print(f"segmenteverygrain import failed: {e}")
         except Exception as e:
             self._seg1_available = False
-            print(f"segmenteverygrain加载异常: {e}")
+            print(f"segmenteverygrain loading error: {e}")
     
     def mobile_sam_segmentation(self, 
                           image: np.ndarray,
@@ -125,24 +125,24 @@ class MobileSegmentationPipeline:
         fig, ax = None, None
         
         try:
-            print("运行YOLO检测...")
+            print("Running YOLO detection...")
             results = self.yolo_model(image, conf=conf_threshold)
             boxes = results[0].boxes.xyxy.cpu().numpy() if results[0].boxes is not None else []
-            print(f"YOLO检测到 {len(boxes)} 个颗粒候选框")
+            print(f"YOLO detected {len(boxes)} grain candidate boxes")
             
             if len(boxes) == 0:
-                print("未检测到任何颗粒")
+                print("No grains detected")
                 self.performance_stats['segmentation_time'] = time.time() - start_time
                 return polygons, labels, mask_all, grain_data, fig, ax
             
-            print("运行MobileSAM分割...")
+            print("Running MobileSAM segmentation...")
             self.mobilesam_engine.set_image(image)
             
             masks = self.mobilesam_engine.multi_scale_segmentation(image, boxes.tolist())
-            print(f"MobileSAM生成 {len(masks)} 个有效掩码")
+            print(f"MobileSAM generated {len(masks)} valid masks")
             
             if len(masks) == 0:
-                print("MobileSAM未生成任何有效掩码")
+                print("MobileSAM did not generate any valid masks")
                 self.performance_stats['segmentation_time'] = time.time() - start_time
                 return polygons, labels, mask_all, grain_data, fig, ax
             
@@ -151,7 +151,7 @@ class MobileSegmentationPipeline:
                 mask_all = np.logical_or(mask_all, mask).astype(np.uint8)
             
             if self._seg1_available:
-                print("使用segmenteverygrain优化分割结果...")
+                print("Using segmenteverygrain to optimize segmentation results...")
                 
                 labeled_array, num_features = self._seg1_functions['find_connected_components'](mask_all)
                 labels = self._seg1_functions['create_labeled_image'](labeled_array)
@@ -201,21 +201,21 @@ class MobileSegmentationPipeline:
             self.performance_stats['yolo_boxes_count'] = len(boxes)
             self.performance_stats['masks_count'] = len(masks)
             
-            print(f"分割完成: 共检测到 {len(polygons)} 个岩石颗粒")
-            print(f"分割耗时: {self.performance_stats['segmentation_time']:.2f}秒")
+            print(f"Segmentation complete: detected {len(polygons)} rock grains")
+            print(f"Segmentation time: {self.performance_stats['segmentation_time']:.2f}s")
             
             return polygons, labels, mask_all, grain_data, fig, ax
             
         except Exception as e:
-            print(f"分割失败: {e}")
+            print(f"Segmentation failed: {e}")
             self.performance_stats['segmentation_failed'] = True
             self.performance_stats['segmentation_error'] = str(e)
             return polygons, labels, mask_all, grain_data, fig, ax
     
     def _generate_unified_grain_stats(self, polygons: List[Polygon]) -> pd.DataFrame:
         """
-        生成与GUI流程完全一致的颗粒统计数据
-        使用统一的列名：grain_id, area, centroid_x, centroid_y, width, height, perimeter, confidence
+        Generate grain statistics consistent with GUI workflow
+        Using unified column names: grain_id, area, centroid_x, centroid_y, width, height, perimeter, confidence
         """
         if len(polygons) == 0:
             return pd.DataFrame()
@@ -275,14 +275,14 @@ class MobileSegmentationPipeline:
                 from geometry.grain_metric import GrainShapeMetrics
                 shape_calculator = GrainShapeMetrics(df)
                 df = shape_calculator.compute_all_metrics()
-                print("几何参数计算完成")
+                print("Geometric parameter calculation complete")
             except Exception as e:
-                print(f"几何参数计算失败: {e}")
+                print(f"Geometric parameter calculation failed: {e}")
             
             return df
         
         except Exception as e:
-            print(f"生成统一统计数据失败: {e}")
+            print(f"Failed to generate unified statistics: {e}")
             
             data = []
             for i, poly in enumerate(polygons):
@@ -321,5 +321,5 @@ class MobileSegmentationPipeline:
 
 
 if __name__ == "__main__":
-    print("MobileSegmentationPipeline测试")
-    print("测试通过")
+    print("MobileSegmentationPipeline Test")
+    print("Test passed")

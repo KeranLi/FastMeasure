@@ -3,6 +3,7 @@ models/
 results/
 interactive_fastsam_results/
 interactive_results/
+results_mobilesam/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

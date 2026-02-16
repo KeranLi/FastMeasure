@@ -10,7 +10,7 @@ def select_columns_for_grain_statistics_csv(
     strict: bool = False,
 ) -> pd.DataFrame:
     """
-    根据 geometry_config.yaml 控制 grain_statistics.csv 输出列
+    Control grain_statistics.csv output columns based on geometry_config.yaml
     """
     if grain_data is None or grain_data.empty:
         return grain_data
@@ -25,20 +25,20 @@ def select_columns_for_grain_statistics_csv(
 
     df = grain_data.copy()
 
-    # keep_columns：只保留存在的列
+    # keep_columns: only keep existing columns
     if keep_cols:
         exist = [c for c in keep_cols if c in df.columns]
         missing = [c for c in keep_cols if c not in df.columns]
 
         if missing:
-            msg = f"geometry_config.keep_columns 中这些列不存在，已忽略: {missing}"
+            msg = f"These columns in geometry_config.keep_columns do not exist and have been ignored: {missing}"
             if strict:
                 raise KeyError(msg)
             print(msg)
 
         df = df[exist]
 
-    # drop_columns：删掉存在的列
+    # drop_columns: delete existing columns
     if drop_cols:
         drop_exist = [c for c in drop_cols if c in df.columns]
         if drop_exist:
