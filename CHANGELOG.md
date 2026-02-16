@@ -19,6 +19,26 @@ All development progress, feature updates and architecture changes of this proje
 
 ---
 
+## 2026-02-16
+
+- **Modifier:** Core Team
+- **Modification Type:** Documentation
+- **Involved Files:** `README.md`
+
+**Specific Content:**
+- **Acknowledgment**: Added clear acknowledgment of [segmenteverygrain](https://github.com/zsylvester/segmenteverygrain) by Zoltán Sylvester as the inspiration for this project.
+- **Comparison Table**: Added detailed feature comparison table highlighting key improvements:
+  - YOLO-based detection vs U-Net (patch-based)
+  - Dual SAM backends (FastSAM + MobileSAM) vs SAM 2.1 only
+  - ~10x speed improvement for FastSAM mode
+  - Automatic + manual scale calibration
+  - 10+ geometric parameters including fractal dimension
+  - Standalone GUI vs Jupyter notebook
+  - Command-line batch processing
+  - Modular architecture with CLI
+
+---
+
 ## [1.0.0] - 2026-01-07
 
 - **Modifier:** Core Team
