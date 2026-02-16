@@ -1,8 +1,27 @@
 # FastMeasure - Rock Grain Auto Segmentation System
 
+> **Acknowledgment**: This project is inspired by and builds upon [segmenteverygrain](https://github.com/zsylvester/segmenteverygrain) by Zoltán Sylvester. FastMeasure introduces YOLO-based detection, multiple SAM variants, automatic scale detection, and enhanced geometric analysis.
+
 ## Project Overview
 
 FastMeasure is a professional tool for processing rock microscopic images, automatically detecting and segmenting grains. Based on deep learning technology, the system supports two model combinations: **YOLO+FastSAM** and **YOLO+MobileSAM**, combined with intelligent scale bar detection and rich geometric parameter calculation, enabling precise extraction of grain information from rock microscopic images and generation of complete statistical analysis reports.
+
+### Inspiration
+
+This project is inspired by and builds upon **[segmenteverygrain](https://github.com/zsylvester/segmenteverygrain)** by Zoltán Sylvester. We appreciate the excellent work done by the segmenteverygrain team in developing a U-Net + SAM based grain segmentation solution for geomorphology and sedimentary geology research.
+
+While segmenteverygrain pioneered the use of SAM for grain segmentation, FastMeasure takes a different approach and introduces several enhancements:
+
+| Feature | segmenteverygrain | FastMeasure |
+|---------|-------------------|-------------|
+| Detection Model | U-Net (patch-based CNN) | **YOLO (real-time object detection)** |
+| SAM Variants | SAM 2.1 only | **FastSAM + MobileSAM** |
+| Processing Speed | ~2.5 min for 3MP image | **~0.3s for FastSAM (GPU)** |
+| Scale Calibration | Manual (Shift+drag) | **Automatic + Manual calibration** |
+| Geometric Parameters | Basic shape metrics | **10+ parameters including fractal dimension, angularity** |
+| Interactive Mode | Jupyter notebook based | **Standalone GUI with unified key controls** |
+| Batch Processing | Notebook-based | **Command-line batch processing** |
+| Code Structure | Notebook + modules | **Modular core library with CLI** |
 
 The system supports three usage modes:
 - **Auto Processing Mode**: YOLO detection + SAM auto segmentation
@@ -369,6 +388,18 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed update content of each project ver
 ## Contributing
 
 Contributions are welcome! If you have improvement suggestions or find issues, you can contribute code by submitting an `issue` or `pull request`.
+
+## Acknowledgments
+
+This project builds upon the excellent work of **[segmenteverygrain](https://github.com/zsylvester/segmenteverygrain)** by Zoltán Sylvester and colleagues. We thank them for pioneering the application of SAM in sedimentary grain segmentation and for making their work open-source.
+
+Key improvements in FastMeasure:
+- **YOLO-based Detection**: Replaced patch-based U-Net with YOLO for real-time grain detection
+- **Multiple SAM Backends**: Support for both FastSAM (speed) and MobileSAM (precision)
+- **Automatic Scale Detection**: Intelligent red scale bar recognition at image corners
+- **Enhanced Geometric Analysis**: 10+ grain shape parameters including fractal dimension
+- **Unified Architecture**: Modular core library with command-line interface
+- **Cross-Platform**: Full macOS and Linux/Windows support
 
 ## License
 
