@@ -19,6 +19,40 @@ All development progress, feature updates and architecture changes of this proje
 
 ---
 
+## 2026-02-16 - GUI Launcher & Executable Build Support
+
+- **Modifier:** Core Team
+- **Modification Type:** New Feature
+- **Involved Files:** `gui_launcher.py`, `build_exe.py`, `core/model_manager.py`, `.exe_config.yaml`
+
+**Specific Content:**
+- **GUI Launcher**: Added user-friendly graphical interface (`gui_launcher.py`) for non-technical users:
+  - One-click image/folder selection
+  - Visual mode selection (FastSAM/MobileSAM, Auto/Batch/Interactive)
+  - Real-time progress display with log output
+  - Built-in system check and model download dialogs
+  - Cross-platform support (Windows, macOS, Linux)
+  
+- **Executable Build System**: Added PyInstaller build script (`build_exe.py`):
+  - Automated packaging of Python app to standalone executable
+  - Support for both one-directory (recommended) and one-file modes
+  - Includes all dependencies, configs, and core modules
+  - Generates Inno Setup script for Windows installer creation
+  
+- **Model Manager**: Added `core/model_manager.py` for automatic model management:
+  - Check model availability and download missing models
+  - GUI dialog for model download with progress bar
+  - Support for automatic model verification
+  
+- **Executable Config**: Added `.exe_config.yaml` for standalone app configuration
+  
+- **Benefits**:
+  - End users can run FastMeasure without Python installation
+  - Simplified workflow for non-technical geologists
+  - Easier distribution and deployment
+
+---
+
 ## 2026-02-16
 
 - **Modifier:** Core Team
