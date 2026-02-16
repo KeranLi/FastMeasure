@@ -1,181 +1,202 @@
+# FastMeasure - Rock Grain Auto Segmentation System
 
-# FastMeasure - 岩石颗粒自动分割系统
+## Project Overview
 
-## 项目概述
+FastMeasure is a professional tool for processing rock microscopic images, automatically detecting and segmenting grains. Based on deep learning technology, the system supports two model combinations: **YOLO+FastSAM** and **YOLO+MobileSAM**, combined with intelligent scale bar detection and rich geometric parameter calculation, enabling precise extraction of grain information from rock microscopic images and generation of complete statistical analysis reports.
 
-岩石颗粒自动分割系统是一款用于处理岩石显微图像、自动检测并分割颗粒的专业工具。该系统基于深度学习技术，支持 **YOLO+FastSAM** 和 **YOLO+MobileSAM** 两种模型组合，结合智能比例尺检测和丰富的几何参数计算，能够从岩石显微图像中精确提取颗粒信息，并生成完整的统计分析报告。
+The system supports three usage modes:
+- **Auto Processing Mode**: YOLO detection + SAM auto segmentation
+- **Batch Processing Mode**: Batch processing of all images in a folder
+- **Interactive Mode**: Manual point selection for fine segmentation via GUI
 
-系统支持三种使用模式：
-- **自动处理模式**：YOLO检测 + SAM自动分割
-- **批量处理模式**：对整个文件夹的图片进行批量处理
-- **交互式模式**：通过GUI手动点选颗粒进行精细分割
+## Core Features
 
-## 核心功能
+### 1. Dual Model Support
+| Model Combination | Features | Applicable Scenarios |
+|------------------|----------|---------------------|
+| YOLO + FastSAM | Fast, lightweight | Large batch quick processing |
+| YOLO + MobileSAM | High precision, supports interaction | High precision requirements, interactive annotation |
 
-### 1. 双模型支持
-| 模型组合 | 特点 | 适用场景 |
-|---------|------|---------|
-| YOLO + FastSAM | 速度快、轻量级 | 大批量快速处理 |
-| YOLO + MobileSAM | 精度高、支持交互 | 高精度要求、交互式标注 |
+### 2. Scale Bar Detection
+- Automatically recognize red scale bar at bottom-right corner of images
+- Calculate conversion factor from pixels to actual microns
+- Support custom scale bar length configuration
 
-### 2. 比例尺检测
-- 自动识别图像右下角的红色比例尺条
-- 计算像素与实际微米数的转换因子
-- 支持自定义比例尺长度配置
+### 3. Grain Segmentation and Labeling
+- Automatic grain detection and segmentation
+- Intelligent grain numbering and area labeling
+- Support custom labeling styles (font, color, outline, etc.)
 
-### 3. 颗粒分割与标注
-- 自动颗粒检测与分割
-- 智能颗粒编号与面积标注
-- 支持自定义标注样式（字体、颜色、描边等）
+### 4. Geometric Parameter Calculation
+The system can calculate various grain geometric parameters:
+- **Basic Parameters**: Area, perimeter, centroid coordinates, bounding rectangle
+- **Shape Parameters**: Circularity, Aspect Ratio, Rectangularity
+- **Structural Parameters**: Compactness, Roundness, Convexity
+- **Advanced Parameters**: Fractal Dimension, Angularity
 
-### 4. 几何参数计算
-系统可计算多种颗粒几何参数：
-- **基础参数**：面积、周长、质心坐标、外接矩形
-- **形状参数**：圆度(Circularity)、长宽比(Aspect Ratio)、矩形度(Rectangularity)
-- **结构参数**：压实度(Compactness)、磨圆度(Roundness)、凸度(Convexity)
-- **高级参数**：分形维数(Fractal Dimension)、棱角度(Angularity)
+### 5. Flexible Configuration System
+- `config.yaml` / `config_mobilesam.yaml`: Main configuration files (model paths, processing parameters, output settings)
+- `geometry_config.yaml`: Geometric parameter configuration file (custom CSV export fields)
 
-### 5. 灵活的配置系统
-- `config.yaml` / `config_mobilesam.yaml`：主配置文件（模型路径、处理参数、输出设置）
-- `geometry_config.yaml`：几何参数配置文件（自定义CSV导出字段）
+## Installation
 
-## 安装
-
-### 环境要求
+### Environment Requirements
 - Python 3.8+
 - PyTorch
-- CUDA（推荐，用于GPU加速）
+- CUDA (recommended for GPU acceleration)
 
-### 安装步骤
+### Installation Steps
 
-1. 克隆本仓库到本地：
+1. Clone this repository to local:
     ```bash
     git clone https://github.com/KeranLi/FastMeasure.git
     cd FastMeasure
     ```
 
-2. 创建并激活虚拟环境（推荐使用 `conda`）：
+2. Create and activate virtual environment (recommend using `conda`):
     ```bash
     conda create -n rockseg python=3.8
     conda activate rockseg
     ```
 
-3. 安装依赖：
+3. Install dependencies:
     ```bash
     pip install torch torchvision opencv-python pandas matplotlib numpy pyyaml ultralytics shapely scikit-image pillow
     
-    # MobileSAM交互模式需要额外安装
+    # MobileSAM interactive mode requires additional installation
     pip install mobile_sam
     ```
 
-4. 准备模型文件：
-    - YOLO模型：`./models/best_yolo_20260107.pt`（FastSAM流程）或 `./models/best.pt`（MobileSAM流程）
-    - FastSAM模型：`./models/FastSAM-s.pt`
-    - MobileSAM模型：`./models/mobile_sam.pt`
+4. Prepare model files:
+    - YOLO model: `./models/best_yolo_20260107.pt` (FastSAM workflow) or `./models/best.pt` (MobileSAM workflow)
+    - FastSAM model: `./models/FastSAM-s.pt`
+    - MobileSAM model: `./models/mobile_sam.pt`
 
-## 使用指南
+## Usage Guide
 
-### 一、FastSAM 处理流程
+### Unified Entry Point (Recommended)
 
-#### 1. 处理单张图片
+The project provides a unified entry script `run.py` to start FastSAM or MobileSAM:
+
+```bash
+# FastSAM processing
+python run.py fastsam --input path/to/image.tif
+
+# MobileSAM batch processing
+python run.py mobilesam --input path/to/folder --batch
+
+# Interactive mode
+python run.py mobilesam --interactive
+```
+
+### FastSAM Processing Workflow
+
+#### 1. Process Single Image
 ```bash
 python run_fastsam.py --input path/to/image.tif
+# Or use unified entry
+python run.py fastsam --input path/to/image.tif
 ```
 
-#### 2. 批量处理文件夹
+#### 2. Batch Process Folder
 ```bash
 python run_fastsam.py --input path/to/folder --batch
+# Or use unified entry
+python run.py fastsam --input path/to/folder --batch
 ```
 
-#### 3. 使用自定义配置
+#### 3. Use Custom Configuration
 ```bash
 python run_fastsam.py --config custom_config.yaml --input image.tif
 ```
 
-#### 4. 调整处理参数
+#### 4. Adjust Processing Parameters
 ```bash
 python run_fastsam.py --input image.tif --conf 0.3 --min-area 50 --output my_results
 ```
 
-### 二、MobileSAM 处理流程
+### MobileSAM Processing Workflow
 
-#### 1. 终端交互模式（新手推荐）
+#### 1. Terminal Interactive Mode (Recommended for Beginners)
 ```bash
 python run_mobilesam.py
+# Or use unified entry
+python run.py mobilesam
 ```
-按提示选择处理模式和输入参数。
+Follow prompts to select processing mode and input parameters.
 
-#### 2. 处理单张图片
+#### 2. Process Single Image
 ```bash
 python run_mobilesam.py --input path/to/image.tif
+# Or use unified entry
+python run.py mobilesam --input path/to/image.tif
 ```
 
-#### 3. 批量处理文件夹
+#### 3. Batch Process Folder
 ```bash
 python run_mobilesam.py --input path/to/folder --batch
+# Or use unified entry
+python run.py mobilesam --input path/to/folder --batch
 ```
 
-#### 4. GUI交互式分割
+#### 4. GUI Interactive Segmentation
 ```bash
 python run_mobilesam.py --interactive
+# Or use unified entry
+python run.py mobilesam --interactive
 ```
 
-#### 5. 独立交互式标注工具
-```bash
-python mobilesam_interactive.py
-```
+### Interactive Mode Operation Guide
 
-### 三、交互式模式操作说明
+| Key/Operation | Function |
+|--------------|----------|
+| Left click | Add foreground point (segmentation target) |
+| Right click | Add background point (exclusion area) |
+| `X` | Delete last grain |
+| `D` | Delete all grains |
+| `S` | Save results |
+| `Shift+S` | Quick save complete results |
+| `C` | Clear all point marks |
+| `R` | Reset interface |
+| `H` | Show help |
+| `Q` | Quit |
 
-| 按键/操作 | 功能 |
-|----------|------|
-| 左键点击 | 添加前景点（分割目标） |
-| 右键点击 | 添加背景点（排除区域） |
-| `X` | 删除最后一个颗粒 |
-| `D` | 删除所有颗粒 |
-| `S` | 保存结果 |
-| `Shift+S` | 快速保存完整结果 |
-| `C` | 清除所有点标记 |
-| `R` | 重置界面 |
-| `H` | 显示帮助 |
-| `Q` | 退出 |
+## Configuration File Guide
 
-## 配置文件说明
-
-### 主配置文件 (`config.yaml` / `config_mobilesam.yaml`)
+### Main Configuration File (`config.yaml` / `config_mobilesam.yaml`)
 
 ```yaml
-# 模型路径配置
+# Model path configuration
 model_paths:
-  yolo: "./models/best_yolo_20260107.pt"    # YOLO模型路径
-  fastsam: "./models/FastSAM-s.pt"          # FastSAM模型路径
-  device: "cpu"                              # 运行设备: cpu 或 cuda
+  yolo: "./models/best_yolo_20260107.pt"    # YOLO model path
+  fastsam: "./models/FastSAM-s.pt"          # FastSAM model path
+  device: "cpu"                              # Running device: cpu or cuda
 
-# 比例尺检测配置
+# Scale bar detection configuration
 scale_detection:
   enabled: true
-  known_length_um: 1000.0                    # 比例尺实际长度（微米）
+  known_length_um: 1000.0                    # Scale bar actual length (microns)
 
-# 处理参数配置
+# Processing parameter configuration
 processing:
-  yolo_confidence: 0.25                      # YOLO检测置信度阈值
-  min_area: 30                               # 最小颗粒面积（像素）
-  remove_edge_grains: false                  # 是否移除边缘颗粒
+  yolo_confidence: 0.25                      # YOLO detection confidence threshold
+  min_area: 30                               # Minimum grain area (pixels)
+  remove_edge_grains: false                  # Whether to remove edge grains
 
-# 输出配置
+# Output configuration
 output:
-  root_dir: "results"                        # 结果输出目录
-  save_visualization: true                   # 保存可视化结果
-  save_statistics: true                      # 保存CSV统计文件
-  save_summary: true                         # 保存JSON摘要
+  root_dir: "results"                        # Result output directory
+  save_visualization: true                   # Save visualization results
+  save_statistics: true                      # Save CSV statistics file
+  save_summary: true                         # Save JSON summary
 ```
 
-### 几何参数配置文件 (`geometry_config.yaml`)
+### Geometric Parameter Configuration File (`geometry_config.yaml`)
 
 ```yaml
 grain_statistics_csv:
   enabled: true
-  # 最终写入CSV的列（按此顺序输出）
+  # Columns finally written to CSV (output in this order)
   keep_columns:
     - label
     - area
@@ -188,101 +209,108 @@ grain_statistics_csv:
     - diameter_um
 ```
 
-## 输出文件说明
+## Output File Guide
 
-处理完成后，系统会在输出目录生成以下文件：
+After processing is complete, the system generates the following files in the output directory:
 
-| 文件名 | 说明 |
-|-------|------|
-| `segmentation_result.png` | 分割结果可视化图（带颗粒轮廓） |
-| `segmentation_labeled.png` | 标注结果图（带颗粒编号和面积） |
-| `segmentation_mask.png` | 二值分割掩码图 |
-| `grain_statistics.csv` | 颗粒统计数据表格 |
-| `summary.json` | 处理摘要信息（JSON格式） |
-| `performance.json` | 性能统计信息 |
+| File Name | Description |
+|-----------|-------------|
+| `segmentation_result.png` | Segmentation result visualization (with grain contours) |
+| `segmentation_labeled.png` | Labeled result image (with grain numbers and areas) |
+| `segmentation_mask.png` | Binary segmentation mask image |
+| `grain_statistics.csv` | Grain statistics data table |
+| `summary.json` | Processing summary information (JSON format) |
+| `performance.json` | Performance statistics information |
 
-## 项目结构
+## Project Structure
 
 ```
 .
-├── run_fastsam.py              # FastSAM启动脚本
-├── run_mobilesam.py            # MobileSAM启动脚本（支持交互模式）
-├── mobilesam_interactive.py    # MobileSAM独立交互式工具
-├── config.yaml                 # FastSAM配置文件
-├── config_mobilesam.yaml       # MobileSAM配置文件
-├── geometry_config.yaml        # 几何参数配置文件
+├── run.py                      # Unified entry script (new)
+├── run_fastsam.py              # FastSAM startup script
+├── run_mobilesam.py            # MobileSAM startup script (supports interactive mode)
+├── mobilesam_interactive.py    # MobileSAM standalone interactive tool
+├── config.yaml                 # FastSAM configuration file
+├── config_mobilesam.yaml       # MobileSAM configuration file
+├── geometry_config.yaml        # Geometric parameter configuration file
 │
-├── fastsam/                    # FastSAM模块
-│   ├── rock_fastsam_system.py  # FastSAM主系统
-│   ├── yolo_fastsam.py         # YOLO+FastSAM流水线
-│   ├── seg_engine.py           # 分割引擎
-│   ├── seg_optimize.py         # 分割优化
-│   └── seg_tools.py            # 工具函数
+├── core/                       # Core module (new)
+│   ├── __init__.py             # Core module initialization
+│   ├── seg_tools.py            # Shared tool functions
+│   ├── seg_optimize.py         # Shared segmentation optimization
+│   └── cli_base.py             # Shared CLI functions
 │
-├── mobilesam/                  # MobileSAM模块
-│   ├── rock_mobilesam_system.py  # MobileSAM主系统
-│   ├── yolo_mobilesam.py         # YOLO+MobileSAM流水线
-│   ├── mobile_sam_engine.py      # MobileSAM引擎
-│   ├── seg_optimize.py           # 分割优化
-│   └── seg_tools.py              # 工具函数
+├── fastsam/                    # FastSAM module
+│   ├── rock_fastsam_system.py  # FastSAM main system
+│   ├── yolo_fastsam.py         # YOLO+FastSAM pipeline
+│   ├── seg_engine.py           # Segmentation engine
+│   ├── seg_optimize.py         # Segmentation optimization (compatibility wrapper)
+│   └── seg_tools.py            # Tool functions (compatibility wrapper)
 │
-├── geometry/                   # 几何参数计算模块
-│   ├── grain_metric.py         # 颗粒形状参数计算
-│   ├── config_loader.py        # 配置加载器
-│   └── export_csv.py           # CSV导出工具
+├── mobilesam/                  # MobileSAM module
+│   ├── rock_mobilesam_system.py  # MobileSAM main system
+│   ├── yolo_mobilesam.py         # YOLO+MobileSAM pipeline
+│   ├── mobile_sam_engine.py      # MobileSAM engine
+│   ├── seg_optimize.py           # Segmentation optimization (compatibility wrapper)
+│   └── seg_tools.py              # Tool functions (compatibility wrapper)
 │
-├── scale_detector.py           # 比例尺检测模块
-├── grain_marker.py             # 颗粒标注模块
-├── models/                     # 模型文件目录
-├── results/                    # 默认输出目录
-└── Boulder_20260107/           # 测试数据示例
+├── geometry/                   # Geometric parameter calculation module
+│   ├── grain_metric.py         # Grain shape parameter calculation
+│   ├── config_loader.py        # Config loader
+│   └── export_csv.py           # CSV export utility
+│
+├── scale_detector.py           # Scale bar detection module
+├── grain_marker.py             # Grain labeling module
+├── models/                     # Model files directory
+├── results/                    # Default output directory
+└── Boulder_20260107/           # Test data example
 ```
 
-## 性能参考
+## Performance Reference
 
-基于 RTX 3060 显卡的性能测试：
+Performance tests based on RTX 3060 graphics card:
 
-| 模型 | GPU推理 | CPU推理 | 速度对比 |
-|------|--------|--------|---------|
-| FastSAM | ~77ms | ~294ms | CPU约为GPU的4倍 |
-| MobileSAM | ~3.7s | ~101s | CPU约为GPU的26倍 |
+| Model | GPU Inference | CPU Inference | Speed Comparison |
+|-------|--------------|---------------|------------------|
+| FastSAM | ~77ms | ~294ms | CPU is ~4x GPU |
+| MobileSAM | ~3.7s | ~101s | CPU is ~26x GPU |
 
-**建议**：对于大批量处理，推荐使用GPU加速；小批量或测试可使用CPU模式。
+**Recommendation**: For large batch processing, GPU acceleration is recommended; for small batches or testing, CPU mode can be used.
 
-## 依赖列表
+## Dependencies
 
-| 包名 | 用途 |
-|------|------|
-| `torch` | 深度学习框架 |
-| `ultralytics` | YOLOv8和SAM模型 |
-| `opencv-python` | 图像处理和比例尺检测 |
-| `pandas` | 数据处理和统计 |
-| `matplotlib` | 结果可视化 |
-| `numpy` | 数值计算 |
-| `pyyaml` | 配置文件解析 |
-| `shapely` | 几何计算 |
-| `scikit-image` | 图像处理工具 |
-| `mobile_sam` | MobileSAM库（交互模式需要） |
+| Package | Purpose |
+|---------|---------|
+| `torch` | Deep learning framework |
+| `ultralytics` | YOLOv8 and SAM models |
+| `opencv-python` | Image processing and scale bar detection |
+| `pandas` | Data processing and statistics |
+| `matplotlib` | Result visualization |
+| `numpy` | Numerical computation |
+| `pyyaml` | Configuration file parsing |
+| `shapely` | Geometric calculation |
+| `scikit-image` | Image processing tools |
+| `mobile_sam` | MobileSAM library (required for interactive mode) |
 
-## 常见问题
+## FAQ
 
-**Q: 比例尺检测失败怎么办？**  
-A: 检查图片右下角是否有清晰的红色比例尺条，或在配置文件中调整`red_lower1/red_upper1`等颜色阈值参数。
+**Q: What to do if scale bar detection fails?**  
+A: Check if there is a clear red scale bar at the bottom-right corner of the image, or adjust color threshold parameters like `red_lower1/red_upper1` in the configuration file.
 
-**Q: 如何调整检测灵敏度？**  
-A: 修改配置文件中的`yolo_confidence`参数（值越小检测越灵敏，但可能引入噪声）。
+**Q: How to adjust detection sensitivity?**  
+A: Modify the `yolo_confidence` parameter in the configuration file (smaller values mean more sensitive detection but may introduce noise).
 
-**Q: 交互模式无法启动GUI？**  
-A: 确保系统有图形界面支持，或尝试设置环境变量`MPLBACKEND=TkAgg`。
+**Q: Interactive mode cannot start GUI?**  
+A: Ensure the system has GUI support, or try setting the environment variable `MPLBACKEND=TkAgg`.
 
-## 更新日志
+## Change Log
 
-详见 [CHANGELOG.md](CHANGELOG.md) 了解项目各版本的详细更新内容。
+See [CHANGELOG.md](CHANGELOG.md) for detailed update content of each project version.
 
-## 贡献
+## Contributing
 
-欢迎贡献！如果你有改进建议或者发现问题，可以通过提交 `issue` 或 `pull request` 来贡献代码。
+Contributions are welcome! If you have improvement suggestions or find issues, you can contribute code by submitting an `issue` or `pull request`.
 
-## 许可证
+## License
 
 [LICENSE](LICENSE)

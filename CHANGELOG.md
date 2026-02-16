@@ -1,170 +1,268 @@
 # Project Change Log
 
-本项目所有的开发进度、功能更新及架构变动均记录于此。
+All development progress, feature updates and architecture changes of this project are recorded here.
 
 ---
 
-## [Unreleased] 早期开发阶段
+## [Unreleased] Early Development Phase
 
-- **修改人：** 核心团队
-- **修改类型：** 功能新增与重构
-- **涉及文件：** 核心功能模块、GUI 模块
+- **Modifier:** Core Team
+- **Modification Type:** Feature addition and refactoring
+- **Involved Files:** Core function modules, GUI modules
 
-**具体内容：**
-- **交互与批量化**：新增交互式模式（图形界面选择文件）和批量处理模式（支持文件夹处理）。
-- **颗粒标注**：添加了颗粒标注功能，实现在分割图上自动添加颗粒编号和面积标注。
-- **比例尺模块**：增加了比例尺检测模块，支持自动识别图像比例尺并计算比例因子。
-- **架构重构**：重构代码为模块化结构，改进了比例尺检测算法的精确度和批量处理的日志输出。
-- **修复**：修复了特定环境下 YOLO 模型加载失败以及比例尺缺失时计算不正确的问题。
+**Specific Content:**
+- **Interactive and Batch Processing**: Added interactive mode (GUI file selection) and batch processing mode (folder processing support).
+- **Grain Labeling**: Added grain labeling function, automatically adding grain numbers and area labels to segmentation images.
+- **Scale Bar Module**: Added scale bar detection module, supporting automatic recognition of image scale bar and calculation of scale factor.
+- **Architecture Refactoring**: Refactored code into modular structure, improved scale bar detection algorithm accuracy and batch processing log output.
+- **Fixes**: Fixed YOLO model loading failures in specific environments and incorrect calculations when scale bar is missing.
 
 ---
 
 ## [1.0.0] - 2026-01-07
 
-- **修改人：** 核心团队
-- **修改类型：** 初始版本发布
-- **涉及文件：** 项目全量初始代码
+- **Modifier:** Core Team
+- **Modification Type:** Initial version release
+- **Involved Files:** Project full initial code
 
-**具体内容：**
-- **功能发布**：包含单张图像处理、比例尺检测、颗粒分割、颗粒标注等核心功能。
-- **模型集成**：完成了 YOLO 和 SAM 模型的集成，可进行高效岩石颗粒分割。
-- **配置与输出**：支持通过 `config.yaml` 调整模型路径和参数；输出文件含分割图、标注图、CSV 统计数据及 JSON 总结。
-- **已知问题**：极端情况下标注重叠；大量图像处理性能待优化；EfficientSAM3 因 Triton 架构限制，对 Windows 端支持较弱。
+**Specific Content:**
+- **Feature Release**: Includes core functions such as single image processing, scale bar detection, grain segmentation, and grain labeling.
+- **Model Integration**: Completed integration of YOLO and SAM models for efficient rock grain segmentation.
+- **Config and Output**: Supports adjusting model paths and parameters through `config.yaml`; output files include segmentation images, labeled images, CSV statistics and JSON summaries.
+- **Known Issues**: Label overlap in extreme cases; performance optimization needed for large image batches; EfficientSAM3 has weak Windows support due to Triton architecture limitations.
 
 ---
 
 ## 2026-01-08
 
-- **修改人：** 系统记录
-- **修改类型：** 性能测试
-- **涉及文件：** `fastsam_inference_test.py`
+- **Modifier:** System Record
+- **Modification Type:** Performance Testing
+- **Involved Files:** `fastsam_inference_test.py`
 
-**具体内容：**
-- 加入 FastSAM 测试脚本。
-- **性能评估 (RTX 3060)**：CPU 推理时间约为 GPU 的 4 倍（97.8/405.9/379.5 ms vs 61.1/102.1/68.0 ms）。
+**Specific Content:**
+- Added FastSAM test script.
+- **Performance Evaluation (RTX 3060)**: CPU inference time is about 4x GPU (97.8/405.9/379.5 ms vs 61.1/102.1/68.0 ms).
 
 ---
 
 ## 2026-01-09
 
-- **修改人：** 系统记录
-- **修改类型：** 性能测试
-- **涉及文件：** `mobilesam_inference_test.py`
+- **Modifier:** System Record
+- **Modification Type:** Performance Testing
+- **Involved Files:** `mobilesam_inference_test.py`
 
-**具体内容：**
-- 加入 MobileSAM 测试脚本。
-- **性能评估 (RTX 3060)**：CPU 推理耗时约为 GPU 的 26 倍（CPU 推理环节耗时达 101s，GPU 为 3.7s）。
+**Specific Content:**
+- Added MobileSAM test script.
+- **Performance Evaluation (RTX 3060)**: CPU inference time is about 26x GPU (CPU inference takes 101s, GPU takes 3.7s).
 
 ---
 
 ## 2026-01-10
 
-- **修改人：** 李柯然
-- **修改类型：** 模型适配与逻辑修改
-- **涉及文件：** `rock.py`、`rock_new.py`、`run.py`、`config.yaml`
+- **Modifier:** Li Keran
+- **Modification Type:** Model Adaptation and Logic Modification
+- **Involved Files:** `rock.py`, `rock_new.py`, `run.py`, `config.yaml`
 
-**具体内容：**
-- 在 `rock_new.py` 中适配 MobileSAM 模型，并同步修改了 `run.py` 的调用逻辑。
-- 更新了 `config.yaml` 的对应配置参数。
+**Specific Content:**
+- Adapted MobileSAM model in `rock_new.py`, and synchronized modifications to `run.py` calling logic.
+- Updated corresponding config parameters in `config.yaml`.
 
 ---
 
 ## 2026-01-13
 
-- **修改人：** 张立华
-- **修改类型：** 文档新增与代码优化
-- **涉及文件：** `yolosection.md`、`segmenteverygrain删监督聚类.py` 等
+- **Modifier:** Zhang Lihua
+- **Modification Type:** Documentation Addition and Code Optimization
+- **Involved Files:** `yolosection.md`, `segmenteverygrain_remove_supervised_clustering.py`, etc.
 
-**具体内容：**
-- **文档补充**：首次上传 `new` 文件夹的文件说明文档，补充项目文件结构信息。
-- **冗余清理**：删除了代码文件中关于“监督聚类”的无用函数。
+**Specific Content:**
+- **Documentation Supplement**: First upload of `new` folder file description document, supplementing project file structure information.
+- **Redundancy Cleanup**: Removed useless functions about "supervised clustering" from code files.
 
 ---
 
 ## 2026-01-15
 
-- **修改人：** 张立华、李柯然
-- **修改类型：** 同步项目结构
-- **涉及文件：** YOLO+SAM 相关代码、YOLO+FastSAM 相关代码
+- **Modifier:** Zhang Lihua, Li Keran
+- **Modification Type:** Project Structure Synchronization
+- **Involved Files:** YOLO+SAM related code, YOLO+FastSAM related code
 
-**具体内容：**
-- **目录调整**：将 YOLO+SAM 代码移入 `new` 文件夹；YOLO+FastSAM 代码移入 `new/super_fastsam` 子文件夹。
-
----
-
-## 2026-01-19
-
-- **修改人：** 张立华
-- **修改类型：** 代码上传
-- **涉及文件：** `fastsam` 文件夹（原 `fsatsam0118`）
-
-**具体内容：**
-- 上传并整合截至 1 月 18 日最新的 FastSAM 封装代码。
+**Specific Content:**
+- **Directory Adjustment**: Moved YOLO+SAM code into `new` folder; YOLO+FastSAM code into `new/super_fastsam` subfolder.
 
 ---
 
 ## 2026-01-19
 
-- **修改人：** 李柯然
-- **修改类型：** 代码重构与功能增强
-- **涉及文件：** `0118fastsam` 文件夹、`run_fastsam.py`、`./geometry/grain_metric.py`、`yolo_fastsam.py`
+- **Modifier:** Zhang Lihua
+- **Modification Type:** Code Upload
+- **Involved Files:** `fastsam` folder (formerly `fsatsam0118`)
 
-**具体内容：**
-- **结构整合**：封装 FastSAM 为独立文件夹，规范 `run_xxx.py` 脚本放置于根目录，统一输出至 `results` 文件夹。
-- **标准化开发**：预留 `mobilesam` 文件夹结构，固定脚本输出格式以适配大语言模型调用。
-- **几何计算**：在 `./geometry/grain_metric.py` 中新增多种几何参数计算函数，并适配 `yolo_fastsam.py` 的步骤 7 逻辑。
-- **测试**：在 CPU 环境下完成 `Boulder_20260107` 文件夹的测试，效果良好。
+**Specific Content:**
+- Uploaded and integrated the latest FastSAM encapsulated code as of January 18.
+
+---
+
+## 2026-01-19
+
+- **Modifier:** Li Keran
+- **Modification Type:** Code Refactoring and Feature Enhancement
+- **Involved Files:** `0118fastsam` folder, `run_fastsam.py`, `./geometry/grain_metric.py`, `yolo_fastsam.py`
+
+**Specific Content:**
+- **Structure Integration**: Encapsulated FastSAM as independent folder, standardized `run_xxx.py` scripts placement in root directory, unified output to `results` folder.
+- **Standardized Development**: Reserved `mobilesam` folder structure, fixed script output format for large language model calling.
+- **Geometric Calculation**: Added various geometric parameter calculation functions in `./geometry/grain_metric.py`, and adapted step 7 logic of `yolo_fastsam.py`.
+- **Testing**: Completed testing of `Boulder_20260107` folder in CPU environment, good results.
 
 ---
 
 ## 2026-01-21
 
-- **修改人：** 李柯然
-- **修改类型：** 参数化功能增强
-- **涉及文件：** `geometry_config.yaml`
+- **Modifier:** Li Keran
+- **Modification Type:** Parameterization Feature Enhancement
+- **Involved Files:** `geometry_config.yaml`
 
-**具体内容：**
-- 增加根据 YAML 配置动态选择几何参数计算项的功能。
+**Specific Content:**
+- Added function to dynamically select geometric parameter calculation items based on YAML config.
 
 ---
 
 ## 2026-01-22
 
-- **修改人：** 李柯然
-- **修改类型：** 配置逻辑优化
-- **涉及文件：** `geometry_config.yaml`、`geometry/config_loader.py`、`export_cav.py`、`fastsam/rock_fastsam_system.py`
+- **Modifier:** Li Keran
+- **Modification Type:** Config Logic Optimization
+- **Involved Files:** `geometry_config.yaml`, `geometry/config_loader.py`, `export_csv.py`, `fastsam/rock_fastsam_system.py`
 
-**具体内容：**
-- 优化集合参数配置功能，实现基于 `geometry_config.yaml` 最终确定 CSV 导出字段。
+**Specific Content:**
+- Optimized geometric parameter config function, implemented final CSV export field determination based on `geometry_config.yaml`.
 
 ---
 
 ## 2026-01-23
 
-- **修改人：** 张立华
-- **修改类型：** 模块新增
-- **涉及文件：** `/mobilesam` 文件夹、`run_mobilesam.py`
+- **Modifier:** Zhang Lihua
+- **Modification Type:** Module Addition
+- **Involved Files:** `/mobilesam` folder, `run_mobilesam.py`
 
-**具体内容：**
-- 参照 FastSAM 结构，正式增加并集成了 MobileSAM 处理流。
+**Specific Content:**
+- Referenced FastSAM structure, officially added and integrated MobileSAM processing flow.
 
 ---
 
 ## 2026-01-24
 
-- **修改人：** 李柯然
-- **修改类型：** 功能新增
-- **涉及文件：** `/geometry` 文件夹、`grain_metric.py`
+- **Modifier:** Li Keran
+- **Modification Type:** Feature Addition
+- **Involved Files:** `/geometry` folder, `grain_metric.py`
 
-**具体内容：**
-- 凸度(convexity)定义，正式增加并集成了 calculate_convexity 计算函数。
+**Specific Content:**
+- Convexity definition, officially added and integrated calculate_convexity calculation function.
 
+---
 
 ## 2026-02-03
 
-- **修改人：** 李柯然
-- **修改类型：** 功能新增
-- **涉及文件：** `mobilesam_interactive.py`
+- **Modifier:** Li Keran
+- **Modification Type:** Feature Addition
+- **Involved Files:** `mobilesam_interactive.py`
 
-**具体内容：**
-- 不明白为什么要装MobileSAM库，原有Ultralytics的SAM库不行吗
+**Specific Content:**
+- Question about why MobileSAM library is needed when Ultralytics SAM library might work
+
+---
+
+## 2026-02-16 - Code Optimization and Refactoring
+
+- **Modifier:** AI Assistant
+- **Modification Type:** Code Refactoring and Optimization
+- **Involved Files:** `core/` folder, `run_fastsam.py`, `run_mobilesam.py`, `run.py`, `fastsam/seg_tools.py`, `fastsam/seg_optimize.py`, `mobilesam/seg_tools.py`, `mobilesam/seg_optimize.py`, `scale_detector.py`, `grain_marker.py`, `README.md`
+
+### Optimization Overview
+
+This optimization mainly addresses code duplication and unclear module structure issues.
+
+### Main Changes
+
+#### 1. Core Module Creation (core/)
+
+**New Files:**
+- `core/__init__.py` - Core module initialization
+- `core/seg_tools.py` - Shared tool classes (optimized from ~1400 lines duplicate code to ~700 lines)
+- `core/seg_optimize.py` - Shared post-processing module
+- `core/cli_base.py` - Shared CLI base functions (extracted ~500 lines duplicate code)
+
+**Content:**
+- `ImageProcessor` - Image processing tool class
+- `PolygonUtils` - Polygon calculation tool class
+- `FileUtils` - File operation tool class
+- `PerformanceMonitor` - Performance monitoring class
+- `SmartPostProcessor` - Smart post processor
+- CLI base functions (argument parsing, interactive wizard, result printing, etc.)
+
+#### 2. Startup Script Simplification
+
+**Before:**
+- `run_fastsam.py` - 678 lines
+- `run_mobilesam.py` - 871 lines
+- Lots of duplicate CLI logic
+
+**After:**
+- `run_fastsam.py` - ~200 lines
+- `run_mobilesam.py` - ~200 lines
+- Uses shared functions from `core/cli_base.py`
+
+#### 3. Sub-module Interface Unification
+
+**Modified Files:**
+- `fastsam/seg_tools.py` - Changed to compatibility wrapper importing from core
+- `fastsam/seg_optimize.py` - Changed to compatibility wrapper importing from core
+- `mobilesam/seg_tools.py` - Changed to compatibility wrapper importing from core
+- `mobilesam/seg_optimize.py` - Changed to compatibility wrapper importing from core
+
+**Advantages:**
+- Maintain backward compatibility, existing code needs no modification
+- Eliminate code duplication
+- Easy to maintain and update uniformly
+
+#### 4. Unified Entry Point
+
+**New File:**
+- `run.py` - Unified command line entry
+
+**Usage:**
+```bash
+python run.py fastsam --input image.tif
+python run.py mobilesam --input image.tif --batch
+```
+
+### Code Line Statistics
+
+| Item | Before | After | Reduction |
+|------|--------|-------|-----------|
+| seg_tools.py (x2) | ~1400 lines | ~20 lines | -98% |
+| seg_optimize.py (x2) | ~840 lines | ~10 lines | -99% |
+| run_fastsam.py | 678 lines | 200 lines | -70% |
+| run_mobilesam.py | 871 lines | 200 lines | -77% |
+| **Total** | **~3800 lines** | **~1300 lines** | **-66%** |
+
+### Backward Compatibility
+
+All optimizations maintain backward compatibility:
+- Original API unchanged - All existing code can run without modification
+- Config files unchanged - All config file formats remain unchanged
+- Startup methods unchanged - Original startup scripts still work
+
+### English Translation
+
+- All comments translated to English
+- All output messages translated to English
+- All emoji characters removed
+- README.md fully translated to English
+
+### Future Optimization Suggestions
+
+1. **Merge interactive scripts** - Combine 4 interactive scripts into 1
+2. **Unify system classes** - Extract common parts to base class
+3. **Add type annotations** - Add complete type annotations to key functions
+4. **Unit tests** - Add unit tests for core modules

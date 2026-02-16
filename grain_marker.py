@@ -1,15 +1,15 @@
 """
-岩石颗粒标注模块
-文件名：grain_marker.py
-功能：在岩石分割结果图上添加颗粒编号和面积标注
-特点：支持无背景标注，自动调整位置避免重叠
+Rock Grain Labeling Module
+File: grain_marker.py
+Function: Add grain numbers and area labels to rock segmentation result images
+Features: Support label without background, auto adjust position to avoid overlap
 """
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from typing import Tuple, Optional, List
-import matplotlib.patheffects as path_effects  # 修复导入
+import matplotlib.patheffects as path_effects
 
 
 def add_grain_labels(
@@ -28,70 +28,70 @@ def add_grain_labels(
     outline_width: float = 2.0
 ) -> plt.Axes:
     """
-    在岩石分割图上添加颗粒编号和面积标注
+    Add grain numbers and area labels to rock segmentation image
     
-    参数:
-        ax: matplotlib坐标轴对象
-        grain_data: 颗粒数据，必须包含['label', 'centroid-0', 'centroid-1', 'area']列
-        image_shape: 图像尺寸 (高度, 宽度, 通道数)
-        scale_factor: 比例因子 (μm/像素)，如果有则显示真实面积
-        font_size: 字体大小
-        text_color: 文字颜色
-        bg_color: 背景框颜色，None或空字符串表示无背景
-        show_area: 是否显示面积
-        max_labels: 密集区域最大标注数
-        min_area: 最小标注面积（像素）
-        text_outline: 是否添加文字描边
-        outline_color: 描边颜色
-        outline_width: 描边宽度
+    Parameters:
+        ax: matplotlib axes object
+        grain_data: Grain data, must contain ['label', 'centroid-0', 'centroid-1', 'area'] columns
+        image_shape: Image size (height, width, channels)
+        scale_factor: Scale factor (um/pixel), if provided show real area
+        font_size: Font size
+        text_color: Text color
+        bg_color: Background box color, None or empty string means no background
+        show_area: Whether to show area
+        max_labels: Maximum labels in dense areas
+        min_area: Minimum label area (pixels)
+        text_outline: Whether to add text outline
+        outline_color: Outline color
+        outline_width: Outline width
         
-    返回:
-        更新后的坐标轴对象
+    Returns:
+        Updated axes object
     """
     
-    # 1. 检查必需的数据列
+    # 1. Check required data columns
     required_columns = ['label', 'centroid-0', 'centroid-1', 'area']
     for col in required_columns:
         if col not in grain_data.columns:
-            print(f"⚠️ 警告: 颗粒数据缺少列 '{col}'，跳过标注")
+            print(f"Warning: Grain data missing column '{col}', skipping labeling")
             return ax
     
-    # 2. 确保数据是数值类型
+    # 2. Ensure data is numeric
     for col in required_columns:
         grain_data[col] = pd.to_numeric(grain_data[col], errors='coerce')
     
-    # 3. 过滤掉无效数据和小颗粒
+    # 3. Filter out invalid data and small grains
     valid_data = grain_data.dropna(subset=required_columns)
     valid_data = valid_data[valid_data['area'] >= min_area]
     
     if len(valid_data) == 0:
         return ax
     
-    # 4. 按面积从大到小排序，优先标注大颗粒
+    # 4. Sort by area from large to small, prioritize labeling large grains
     sorted_data = valid_data.sort_values('area', ascending=False)
     
-    # 5. 限制最大标注数
+    # 5. Limit maximum labels
     if len(sorted_data) > max_labels:
         sorted_data = _filter_dense_areas(sorted_data, image_shape, max_labels)
     
-    # 6. 记录已标注位置，避免重叠
+    # 6. Record labeled positions to avoid overlap
     used_positions = []
     
-    # 7. 为每个颗粒添加标注
+    # 7. Add label for each grain
     for _, row in sorted_data.iterrows():
         label_num = int(row['label'])
-        centroid_y = row['centroid-0']  # 行坐标 (y)
-        centroid_x = row['centroid-1']  # 列坐标 (x)
+        centroid_y = row['centroid-0']  # Row coordinate (y)
+        centroid_x = row['centroid-1']  # Column coordinate (x)
         
-        # 构建标注文本
+        # Build label text
         text = _create_label_text(label_num, row['area'], scale_factor, show_area)
         
-        # 自动调整位置避免重叠
+        # Auto adjust position to avoid overlap
         final_x, final_y = _find_available_position(
             centroid_x, centroid_y, used_positions, image_shape
         )
         
-        # 如果找到合适位置，添加标注
+        # If suitable position found, add label
         if final_x is not None and final_y is not None:
             _add_single_label(
                 ax, final_x, final_y, text, font_size, text_color, bg_color,
@@ -108,19 +108,19 @@ def _filter_dense_areas(
     max_labels: int
 ) -> pd.DataFrame:
     """
-    筛选密集区域的颗粒，优先保留大面积和稀疏区域的颗粒
+    Filter grains in dense areas, prioritize keeping large area and sparse area grains
     """
-    # 计算每个颗粒周围的密度
+    # Calculate density around each grain
     densities = _calculate_grain_densities(grain_data, image_shape)
     grain_data['density'] = densities
     
-    # 计算综合评分：大面积+低密度
+    # Calculate composite score: large area + low density
     grain_data['score'] = (
-        grain_data['area'] / grain_data['area'].max() * 0.7 +  # 面积权重70%
-        (1 - grain_data['density']) * 0.3  # 稀疏度权重30%
+        grain_data['area'] / grain_data['area'].max() * 0.7 +  # Area weight 70%
+        (1 - grain_data['density']) * 0.3  # Sparsity weight 30%
     )
     
-    # 按评分排序，取前max_labels个
+    # Sort by score, take top max_labels
     return grain_data.sort_values('score', ascending=False).head(max_labels)
 
 
@@ -129,31 +129,31 @@ def _calculate_grain_densities(
     image_shape: Tuple[int, int]
 ) -> np.ndarray:
     """
-    计算每个颗粒周围的密度
+    Calculate density around each grain
     """
     if len(grain_data) == 0:
         return np.array([])
     
-    # 获取质心坐标 (x, y)
+    # Get centroid coordinates (x, y)
     centroids = grain_data[['centroid-1', 'centroid-0']].values
     
-    # 设置密度计算半径（图像尺寸的5%）
+    # Set density calculation radius (5% of image size)
     density_radius = min(image_shape[0], image_shape[1]) * 0.05
     
     densities = np.zeros(len(centroids))
     
     for i, (x, y) in enumerate(centroids):
-        # 计算到所有其他颗粒的距离
+        # Calculate distance to all other grains
         distances = np.sqrt(
             (centroids[:, 0] - x) ** 2 + 
             (centroids[:, 1] - y) ** 2
         )
         
-        # 统计半径内的颗粒数（不包括自己）
+        # Count grains within radius (excluding self)
         close_grains = np.sum(distances < density_radius) - 1
         densities[i] = close_grains
     
-    # 归一化到0-1范围
+    # Normalize to 0-1 range
     if np.max(densities) > 0:
         densities = densities / np.max(densities)
     
@@ -167,21 +167,21 @@ def _create_label_text(
     show_area: bool = True
 ) -> str:
     """
-    创建标注文本
+    Create label text
     """
     if not show_area:
         return f"{label_num}"
     
     if scale_factor:
-        # 计算真实面积 (μm²)
+        # Calculate real area (um^2)
         real_area = area * (scale_factor ** 2)
         if real_area > 1000:
-            # 大于1000μm²时显示为mm²
-            return f"{label_num}\n{real_area/1000:.1f}mm²"
+            # Greater than 1000um^2 show as mm^2
+            return f"{label_num}\n{real_area/1000:.1f}mm2"
         else:
-            return f"{label_num}\n{real_area:.0f}μm²"
+            return f"{label_num}\n{real_area:.0f}um2"
     else:
-        # 显示像素面积
+        # Show pixel area
         return f"{label_num}\n{area:.0f}px"
 
 
@@ -190,31 +190,31 @@ def _find_available_position(
     y: float,
     used_positions: List[Tuple[float, float]],
     image_shape: Tuple[int, int],
-    min_distance: float = 25.0  # 减小最小距离，允许更密集的标注
+    min_distance: float = 25.0  # Reduce min distance, allow denser labels
 ) -> Tuple[Optional[float], Optional[float]]:
     """
-    寻找可用的标注位置，避免重叠
+    Find available label position to avoid overlap
     """
-    # 尝试的位置偏移
+    # Try position offsets
     position_offsets = [
-        (0, 0),           # 原始位置
-        (20, 0), (-20, 0), (0, 20), (0, -20),  # 上下左右
-        (15, 15), (15, -15), (-15, 15), (-15, -15),  # 对角线
-        (30, 0), (-30, 0), (0, 30), (0, -30),  # 更远的上下左右
-        (10, 25), (10, -25), (-10, 25), (-10, -25),  # 斜向
+        (0, 0),           # Original position
+        (20, 0), (-20, 0), (0, 20), (0, -20),  # Up down left right
+        (15, 15), (15, -15), (-15, 15), (-15, -15),  # Diagonal
+        (30, 0), (-30, 0), (0, 30), (0, -30),  # Further up down left right
+        (10, 25), (10, -25), (-10, 25), (-10, -25),  # Diagonal
     ]
     
     for dx, dy in position_offsets:
         new_x = x + dx
         new_y = y + dy
         
-        # 检查是否在图像范围内
+        # Check if within image range
         if (0 <= new_x < image_shape[1] and 
             0 <= new_y < image_shape[0] and
             _is_position_available(new_x, new_y, used_positions, min_distance)):
             return new_x, new_y
     
-    # 没有找到合适位置
+    # No suitable position found
     return None, None
 
 
@@ -225,7 +225,7 @@ def _is_position_available(
     min_distance: float
 ) -> bool:
     """
-    检查位置是否可用（与已有标注距离足够远）
+    Check if position is available (far enough from existing labels)
     """
     for used_x, used_y in used_positions:
         distance = np.sqrt((x - used_x) ** 2 + (y - used_y) ** 2)
@@ -247,22 +247,22 @@ def _add_single_label(
     outline_width: float = 2.0
 ) -> None:
     """
-    在指定位置添加单个颗粒标注
+    Add single grain label at specified position
     
-    参数:
-        ax: matplotlib坐标轴
-        x: x坐标
-        y: y坐标
-        text: 标注文本
-        font_size: 字体大小
-        text_color: 文字颜色
-        bg_color: 背景颜色，None表示无背景
-        text_outline: 是否添加文字描边
-        outline_color: 描边颜色
-        outline_width: 描边宽度
+    Parameters:
+        ax: matplotlib axes
+        x: x coordinate
+        y: y coordinate
+        text: Label text
+        font_size: Font size
+        text_color: Text color
+        bg_color: Background color, None means no background
+        text_outline: Whether to add text outline
+        outline_color: Outline color
+        outline_width: Outline width
     """
     if bg_color:
-        # 有背景框的标注
+        # Label with background box
         ax.text(
             x, y,
             text,
@@ -280,7 +280,7 @@ def _add_single_label(
             zorder=10
         )
     else:
-        # 无背景框，添加文字描边增强可读性
+        # No background box, add text outline for readability
         text_obj = ax.text(
             x, y,
             text,
@@ -289,13 +289,13 @@ def _add_single_label(
             ha='center',
             va='center',
             zorder=10,
-            weight='bold'  # 加粗字体
+            weight='bold'  # Bold font
         )
         
-        # 添加黑色描边
+        # Add black outline
         if text_outline:
             text_obj.set_path_effects([
-                path_effects.withStroke(  # 修复这里
+                path_effects.withStroke(
                     linewidth=outline_width, 
                     foreground=outline_color
                 )
@@ -309,9 +309,9 @@ def add_labels_with_config(
     config: dict
 ) -> plt.Axes:
     """
-    使用配置字典添加颗粒标注（便捷函数）
+    Add grain labels using config dictionary (convenience function)
     """
-    # 提取配置参数
+    # Extract config parameters
     font_size = config.get('font_size', 11)
     text_color = config.get('text_color', 'yellow')
     bg_color = config.get('bg_color', '')
@@ -322,11 +322,11 @@ def add_labels_with_config(
     outline_color = config.get('outline_color', 'black')
     outline_width = config.get('outline_width', 2.0)
     
-    # 处理空字符串背景
+    # Handle empty string background
     if bg_color == '':
         bg_color = None
     
-    # 调用主函数
+    # Call main function
     return add_grain_labels(
         ax=ax,
         grain_data=grain_data,
@@ -343,15 +343,15 @@ def add_labels_with_config(
     )
 
 
-# 测试代码
+# Test code
 if __name__ == "__main__":
-    print("✅ grain_marker.py 模块测试")
-    print("功能: 为岩石颗粒添加编号和面积标注")
-    print("使用方式:")
-    print("1. 导入模块: from grain_marker import add_grain_labels")
-    print("2. 调用函数: add_grain_labels(ax, grain_data, image_shape, ...)")
-    print("\n配置说明:")
-    print("  - bg_color: 'white' (有背景), ''或None (无背景)")
-    print("  - text_color: 'yellow', 'white', 'black' 等")
-    print("  - text_outline: True (无背景时建议开启)")
-    print("\n模块已准备就绪！")
+    print("grain_marker.py module test")
+    print("Function: Add numbers and area labels for rock grains")
+    print("Usage:")
+    print("1. Import module: from grain_marker import add_grain_labels")
+    print("2. Call function: add_grain_labels(ax, grain_data, image_shape, ...)")
+    print("\nConfig description:")
+    print("  - bg_color: 'white' (with background), '' or None (no background)")
+    print("  - text_color: 'yellow', 'white', 'black', etc.")
+    print("  - text_outline: True (recommended when no background)")
+    print("\nModule ready!")
