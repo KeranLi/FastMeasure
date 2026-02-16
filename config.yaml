@@ -1,21 +1,16 @@
-# UltraFastSAM岩石颗粒自动分割系统配置文件
-# 修复版：使用绝对路径，确保模型能被正确加载
+# FastSAM Rock Grain Auto Segmentation System Configuration
 
-# ===== 模型路径配置 =====
+# ===== Model Path Configuration =====
 model_paths:
-  # YOLO模型路径（使用绝对路径）
   yolo: "./models/best_yolo_20260107.pt"
-  # FastSAM模型路径（使用绝对路径）
   fastsam: "./models/FastSAM-s.pt"
-  # 运行设备：cpu 或 cuda
   device: "cpu"
 
-# ===== 比例尺检测配置 =====
+# ===== Scale Bar Detection Configuration =====
 scale_detection:
-  enabled: true  # 是否启用比例尺检测
-  known_length_um: 1000.0  # ⚠️ 重要：图片上比例尺的实际长度（微米）
+  enabled: true
+  known_length_um: 1000.0
   
-  # 检测参数（一般无需修改）
   detection_params:
     red_lower1: [0, 120, 120]
     red_upper1: [10, 255, 255]
@@ -27,147 +22,114 @@ scale_detection:
     min_aspect_ratio: 8
     min_horizontal_score: 0.6
 
-# ===== 处理参数配置 =====
+# ===== Processing Parameters =====
 processing:
-  # YOLO检测置信度阈值（0-1之间）
   yolo_confidence: 0.25
-  # 最小颗粒面积（像素数，小于此值的颗粒会被过滤）
   min_area: 30
-  # 最小检测框面积（像素数）
   min_bbox_area: 20
-  # 是否移除边缘颗粒
   remove_edge_grains: false
-  # 是否显示结果图
   plot_results: true
-  # 是否启用性能监控
   performance_monitoring: true
 
-# ===== 输出配置 =====
+# ===== Output Configuration =====
 output:
-  # 结果根目录
+  # Unified output root directory
   root_dir: "results"
-  # 是否按图片名创建子目录
+  # Subdirectory for this mode (fastsam/mobilesam)
+  mode_subdir: "fastsam"
+  # Subdirectory for processing type (auto/interactive)
+  type_subdir: "auto"
+  # Whether to create subdirectories per image
   create_subdirs: true
-  # 保存可视化结果图（三张图）
   save_visualization: true
-  # 保存分割掩码
   save_mask: true
-  # 保存统计表格（CSV格式）
   save_statistics: true
-  # 保存JSON格式的汇总信息
   save_summary: true
-  # 保存性能数据
   save_performance: true
-  # 保存调试信息（仅用于开发）
   save_debug_info: false
 
-# ===== 批量处理配置 =====
+# ===== Batch Processing =====
 batch_processing:
-  # 支持的图片格式
   supported_formats: [".tif", ".tiff", ".jpg", ".jpeg", ".png", ".bmp"]
-  # 遇到损坏图片是否跳过
   skip_corrupted: true
-  # 最大工作进程数（生产环境建议1）
   max_workers: 1
-  # 是否记录错误日志
   log_errors: true
 
-# ===== 日志配置 =====
+# ===== Logging =====
 logging:
-  # 日志级别：DEBUG, INFO, WARNING, ERROR
   level: "INFO"
-  # 是否保存到文件
   save_to_file: true
-  # 是否在控制台显示
   show_in_console: true
-  # 日志格式
   log_format: "%(asctime)s - %(levelname)s - %(message)s"
+  # Log subdirectory under results/logs
+  log_subdir: "fastsam"
 
-# ===== 颗粒标注配置 =====
+# ===== Grain Labeling =====
 grain_labeling:
-  enabled: true           # 是否启用颗粒标注
-  font_size: 11          # 字体大小（建议11-14）
-  text_color: "yellow"   # 文字颜色（黄色在岩石图上更醒目）
-  bg_color: ""           # 空字符串表示无背景框
-  show_area: true        # 是否显示面积
-  max_labels: 1000       # 密集区域最大标注数
-  min_area: 0            # 最小标注面积（0表示所有颗粒都标注）
-  text_outline: true     # 是否添加文字描边
-  outline_color: "black" # 描边颜色
-  outline_width: 2.0     # 描边宽度
+  enabled: true
+  font_size: 11
+  text_color: "yellow"
+  bg_color: ""
+  show_area: true
+  max_labels: 1000
+  min_area: 0
+  text_outline: true
+  outline_color: "black"
+  outline_width: 2.0
 
-# ===== UltraFastSAM引擎参数（高级配置）=====
-ultra_engine:
-  # 全局推理参数
+# ===== FastSAM Engine Parameters =====
+fastsam_params:
   global:
-    imgsz: 1024          # 图像尺寸
-    conf: 0.15           # 置信度阈值
-    iou: 0.3             # IoU阈值
-    retina_masks: true   # 使用视网膜掩码
-  
-  # 局部推理参数
+    imgsz: 1024
+    conf: 0.15
+    iou: 0.3
+    retina_masks: true
   local:
-    imgsz: 512           # 图像尺寸
-    conf: 0.1            # 置信度阈值
-    iou: 0.2             # IoU阈值
-  
-  # 小颗粒参数
+    imgsz: 512
+    conf: 0.1
+    iou: 0.2
   small:
-    imgsz: 256           # 图像尺寸
-    conf: 0.05           # 置信度阈值
-    iou: 0.1             # IoU阈值
-  
-  # 掩码过滤参数
+    imgsz: 256
+    conf: 0.05
+    iou: 0.1
   filter:
-    min_area: 10         # 最小面积（像素）
-    max_area_ratio: 0.8  # 最大面积比例
-    min_solidity: 0.3    # 最小实心度
-    min_extent: 0.1      # 最小范围
-  
-  # 形态学参数
+    min_area: 10
+    max_area_ratio: 0.8
+    min_solidity: 0.3
+    min_extent: 0.1
   morphology:
-    small_kernel: [3, 3]     # 小核
-    medium_kernel: [5, 5]    # 中核
-    large_kernel: [7, 7]     # 大核
-    closing_iterations: 1    # 闭运算迭代次数
-    opening_iterations: 1    # 开运算迭代次数
+    small_kernel: [3, 3]
+    medium_kernel: [5, 5]
+    large_kernel: [7, 7]
+    closing_iterations: 1
+    opening_iterations: 1
 
-# ===== 后处理参数 =====
+# ===== Post-processing =====
 postprocessing:
-  # 智能后处理
   smart_postprocess:
-    enabled: true        # 是否启用智能后处理
-    min_area: 30         # 最小面积
-    iou_threshold: 0.5   # IoU阈值
-    simplify_tolerance: 1.0  # 简化容差
-    buffer_distance: 0.5     # 缓冲距离
-  
-  # 重叠处理
+    enabled: true
+    min_area: 30
+    iou_threshold: 0.5
+    simplify_tolerance: 1.0
+    buffer_distance: 0.5
   overlap_handling:
-    merge_threshold: 0.7     # 合并阈值
-    split_connected: true    # 分割粘连
-    remove_small: true       # 去除小多边形
-  
-  # 形态学优化
+    merge_threshold: 0.7
+    split_connected: true
+    remove_small: true
   morphological_optimization:
-    enabled: true            # 是否启用
-    buffer_size: 0.5         # 缓冲大小
-    simplify: true           # 是否简化
+    enabled: true
+    buffer_size: 0.5
+    simplify: true
 
-# ===== 性能优化 =====
+# ===== Performance =====
 performance:
-  # 内存优化
   memory:
-    max_image_size_mb: 50    # 最大图像大小（MB）
-    use_memory_mapping: false # 是否使用内存映射
-    
-  # 缓存设置
+    max_image_size_mb: 50
+    use_memory_mapping: false
   cache:
-    enabled: true            # 是否启用缓存
-    cache_dir: "cache"       # 缓存目录
-    max_cache_size_mb: 1000  # 最大缓存大小（MB）
-    
-  # 并行处理
+    enabled: true
+    cache_dir: "results/temp/cache"
+    max_cache_size_mb: 1000
   parallel:
-    enabled: false           # 是否启用并行处理
-    max_workers: 2           # 最大工作进程数
+    enabled: false
+    max_workers: 2

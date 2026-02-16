@@ -65,12 +65,12 @@ print("=" * 60)
 import sys
 from pathlib import Path
 
-# 获取项目一模块路径
+# Get project one module path
 current_file = Path(__file__).resolve()
-project_root = current_file.parent  # 修改：只需要一个parent，因为文件在项目根目录
+project_root = current_file.parent  # Note: only one parent needed as file is in project root
 project1_dir = project_root / "segmenteverygrain"
 
-# 添加到Python路径
+# Add to Python path
 if str(project1_dir) not in sys.path:
     sys.path.insert(0, str(project1_dir))
 
@@ -84,10 +84,10 @@ try:
     )
     PROJECT1_AVAILABLE = True
     print("Successfully imported project one calculation functions")
-    print(f"   模块位置: {project1_dir}")
+    print(f"   Module location: {project1_dir}")
 except ImportError as e:
-    print(f"导入项目一计算函数失败: {e}")
-    print("程序需要项目一函数才能运行")
+    print(f"Failed to import project one calculation functions: {e}")
+    print("Program requires project one functions to run")
     sys.exit(1)
 
 # Import geometry calculation modules
@@ -118,7 +118,7 @@ print("=" * 60)
 
 
 class PureFastSAMInteractiveEnhanced:
-    """增强版交互式FastSAM - 修复版"""
+    """Enhanced Interactive FastSAM - Fixed Version"""
     
     def __init__(self, model_path: str = "models/FastSAM-s.pt", 
                  device: str = "cpu"):
@@ -130,12 +130,12 @@ class PureFastSAMInteractiveEnhanced:
         self.fastsam_model = None
         self.model_loaded = False
         
-        # 全图推理结果缓存
+        # Full image inference result cache
         self.global_results = None
         self.all_masks_cache = []
         self.all_masks_scores = []
         
-        # 交互状态
+        # Interactive state
         self.grains = []
         self.current_grain_id = 0
         self.drawing_box = False
@@ -143,44 +143,45 @@ class PureFastSAMInteractiveEnhanced:
         self.box_end = None
         self.current_box = None
         
-        # 优化：减少重绘
+        # Optimization: reduce redraw
         self.last_draw_time = 0
-        self.draw_interval = 0.05  # 50ms，避免频繁重绘
+        self.draw_interval = 0.05  # 50ms，Avoid frequent redraw
         
-        # 结果存储
+        # Result storage
         self.polygons = []
         self.labels = None
         self.mask_all = None
         self.grain_data = None
         
-        # 显示相关
+        # Display related
         self.fig = None
         self.ax = None
         self.grain_patches = {}
         self.box_artist = None
         self.grain_texts = {}
         
-        # 输出目录
-        self.output_dir = Path("interactive_fastsam_results")
-        self.output_dir.mkdir(exist_ok=True)
+        # Output directory
+        # Unified output directory: results/fastsam/interactive/
+        self.output_dir = Path("results") / "fastsam" / "interactive"
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         
-        # 几何配置
+        # Geometry configuration
         self.geometry_config = None
         if GEOMETRY_AVAILABLE:
             try:
-                # 修改点：调整配置文件的路径
+                # Modification: adjust config file path
                 config_path = Path(__file__).parent / "geometry_config.yaml"
                 if config_path.exists():
                     self.geometry_config = load_geometry_config(str(config_path))
-                    print("geometry配置加载成功")
+                    print("Geometry configuration loaded successfully")
                 else:
-                    # 尝试在fastsam子目录查找
+                    # Try to find in fastsam subdirectory
                     alt_config_path = Path(__file__).parent / "fastsam" / "geometry_config.yaml"
                     if alt_config_path.exists():
                         self.geometry_config = load_geometry_config(str(alt_config_path))
-                        print("从fastsam子目录加载geometry配置成功")
+                        print("Successfully loaded geometry configuration from fastsam subdirectory")
             except Exception as e:
-                print(f"加载geometry配置失败: {e}")
+                print(f"Failed to load geometry configuration: {e}")
         
         # Performance statistics
         self.start_time = None
@@ -205,39 +206,39 @@ class PureFastSAMInteractiveEnhanced:
     def _load_fastsam_model(self) -> bool:
         """Load FastSAM model"""
         if not FASTSAM_AVAILABLE:
-            print("FastSAM库不可用")
+            print("FastSAM library not available")
             return False
         
         try:
-            print(f"加载FastSAM模型: {self.model_path}")
+            print(f"Loading FastSAM model: {self.model_path}")
             
             if not os.path.exists(self.model_path):
-                print(f"模型文件不存在: {self.model_path}")
+                print(f"Model file does not exist: {self.model_path}")
                 return False
             
-            # 加载FastSAM模型
+            # Load FastSAM model
             self.fastsam_model = FastSAM(self.model_path)
             self.fastsam_model.to(self.device)
             self.model_loaded = True
             
-            print(f"FastSAM模型加载成功 (设备: {self.device})")
+            print(f"FastSAM model loaded successfully (device: {self.device})")
             return True
             
         except Exception as e:
-            print(f"模型加载失败: {e}")
+            print(f"Model loading failed: {e}")
             traceback.print_exc()
             return False
     
     def _run_global_inference(self):
-        """运行全图推理并缓存结果"""
+        """Run full image inference and cache results"""
         if self.image is None or not self.model_loaded:
             return False
         
         try:
-            print("运行全图推理...")
+            print("Running full image inference...")
             start_time = time.time()
             
-            # 运行FastSAM全图推理
+            # RunFastSAMFull image inference
             results = self.fastsam_model(
                 self.image,
                 device=self.device,
@@ -248,14 +249,14 @@ class PureFastSAMInteractiveEnhanced:
             )
             
             if len(results) == 0 or results[0].masks is None:
-                print("全图推理未生成掩码")
+                print("Full image inference did not generate masks")
                 return False
             
-            # 缓存结果
+            # Cache results
             self.global_results = results[0]
             masks_data = results[0].masks.data.cpu().numpy()
             
-            # 处理并缓存所有掩码
+            # Process and cache all masks
             self.all_masks_cache = []
             self.all_masks_scores = []
             
@@ -264,53 +265,53 @@ class PureFastSAMInteractiveEnhanced:
             for idx, mask in enumerate(masks_data):
                 binary_mask = (mask > 0).astype(np.uint8)
                 
-                # 过滤小掩码
+                # Filter small masks
                 if np.sum(binary_mask) < 10:
                     continue
                 
-                # 确保掩码尺寸正确
+                # Ensure mask size is correct
                 if binary_mask.shape[0] != h or binary_mask.shape[1] != w:
                     binary_mask = cv2.resize(binary_mask, (w, h), interpolation=cv2.INTER_NEAREST)
                 
-                # 形态学增强
+                # Morphological enhancement
                 enhanced_mask = self._enhance_mask_morphology(binary_mask)
                 
-                # 计算质量分数
+                # Calculate quality score
                 score = self._calculate_mask_quality(enhanced_mask)
                 
                 self.all_masks_cache.append(enhanced_mask)
                 self.all_masks_scores.append(score)
             
             inference_time = time.time() - start_time
-            print(f"全图推理完成: {len(self.all_masks_cache)}个候选掩码，耗时: {inference_time:.2f}s")
+            print(f"Full image inference completed: {len(self.all_masks_cache)} candidate masks, time: {inference_time:.2f}s")
             return True
             
         except Exception as e:
-            print(f"全图推理失败: {e}")
+            print(f"Full image inference failed: {e}")
             return False
     
     def _enhance_mask_morphology(self, mask: np.ndarray) -> np.ndarray:
-        """使用形态学操作增强掩码"""
-        # 闭运算填充小孔洞
+        """Enhance mask using morphological operations"""
+        # Close operation to fill small holes
         kernel_close = np.ones((3, 3), np.uint8)
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_close, iterations=1)
         
-        # 开运算去除小噪点
+        # Open operation to remove small noise
         kernel_open = np.ones((3, 3), np.uint8)
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel_open, iterations=1)
         
-        # 填充孔洞
+        # Fill holes
         from scipy import ndimage
         mask = ndimage.binary_fill_holes(mask).astype(np.uint8)
         
         return mask
     
     def _calculate_mask_quality(self, mask: np.ndarray) -> float:
-        """计算掩码质量分数（0-1）"""
+        """Calculate mask quality score (0-1)"""
         if mask.sum() == 0:
             return 0.0
         
-        # 计算实心度
+        # Calculate solidity
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours:
             return 0.0
@@ -328,11 +329,11 @@ class PureFastSAMInteractiveEnhanced:
         return float(solidity)
     
     def set_image(self, image: np.ndarray):
-        """设置当前图像并运行全图推理"""
+        """Set current image andRunFull image inference"""
         self.image = image
-        print(f"图像已设置: {image.shape}")
+        print(f"Image set: {image.shape}")
         
-        # 运行全图推理
+        # Run full image inference
         self._run_global_inference()
     
     def _safe_file_dialog(self):
@@ -363,32 +364,32 @@ class PureFastSAMInteractiveEnhanced:
         return self.selected_file
     
     def load_image_with_gui(self) -> bool:
-        """通过GUI文件选择对话框加载图片"""
+        """Load image through GUI file dialog"""
         if not self.model_loaded or self.fastsam_model is None:
-            print("模型未加载，无法处理图片")
+            print("Model not loaded, cannot process image")
             return False
         
         try:
-            print("请选择岩石显微图像...")
+            print("Please select rock microscopic image...")
             
             file_path = self._safe_file_dialog()
             
             if not file_path:
-                print("未选择文件，退出交互模式")
+                print("No file selected, exiting interactive mode")
                 return False
             
             if not os.path.exists(file_path):
-                print(f"图片文件不存在: {file_path}")
+                print(f"Image file does not exist: {file_path}")
                 return False
             
-            print(f"加载图片: {file_path}")
+            print(f"Loading image: {file_path}")
             pil_image = Image.open(file_path).convert('RGB')
             self.image = np.array(pil_image)
             self.image_path = file_path
             
             self.set_image(self.image)
             
-            # 重置状态
+            # Reset state
             self.grains = []
             self.current_grain_id = 0
             self.grain_patches = {}
@@ -400,33 +401,33 @@ class PureFastSAMInteractiveEnhanced:
             
             self.start_time = time.time()
             
-            print(f"图片加载成功: {self.image.shape}")
+            print(f"Image loaded successfully: {self.image.shape}")
             return True
             
         except Exception as e:
-            print(f"图片加载失败: {e}")
+            print(f"Image loading failed: {e}")
             traceback.print_exc()
             return False
     
     def load_image_from_path(self, image_path: str) -> bool:
-        """直接从路径加载图片"""
+        """Load image directly from path"""
         if not self.model_loaded or self.fastsam_model is None:
-            print("模型未加载，无法处理图片")
+            print("Model not loaded, cannot process image")
             return False
         
         try:
             if not os.path.exists(image_path):
-                print(f"图片文件不存在: {image_path}")
+                print(f"Image file does not exist: {image_path}")
                 return False
             
-            print(f"加载图片: {image_path}")
+            print(f"Loading image: {image_path}")
             pil_image = Image.open(image_path).convert('RGB')
             self.image = np.array(pil_image)
             self.image_path = image_path
             
             self.set_image(self.image)
             
-            # 重置状态
+            # Reset state
             self.grains = []
             self.current_grain_id = 0
             self.grain_patches = {}
@@ -438,25 +439,25 @@ class PureFastSAMInteractiveEnhanced:
             
             self.start_time = time.time()
             
-            print(f"图片加载成功: {self.image.shape}")
+            print(f"Image loaded successfully: {self.image.shape}")
             return True
             
         except Exception as e:
-            print(f"图片加载失败: {e}")
+            print(f"Image loading failed: {e}")
             traceback.print_exc()
             return False
     
     def _find_mask_at_point(self, x: float, y: float) -> Optional[Dict]:
-        """查找点击位置所在的掩码 - 修复版"""
+        """Find mask at clicked position - Fixed version"""
         ix, iy = int(x), int(y)
         h, w = self.image.shape[:2]
         
         if not (0 <= ix < w and 0 <= iy < h):
             return None
         
-        # 从缓存的掩码中查找
+        # Search from cached masks
         for idx, mask in enumerate(self.all_masks_cache):
-            # 确保掩码尺寸正确
+            # Ensure mask size correct
             if mask.shape[0] != h or mask.shape[1] != w:
                 continue
                 
@@ -467,10 +468,10 @@ class PureFastSAMInteractiveEnhanced:
                     'index': idx
                 }
         
-        # 如果没有找到，尝试在点周围进行小范围搜索
+        # If not found，Try small range search around point
         search_radius = 5
         for idx, mask in enumerate(self.all_masks_cache):
-            # 检查点周围区域
+            # Check area around point
             x_min = max(0, ix - search_radius)
             x_max = min(w, ix + search_radius)
             y_min = max(0, iy - search_radius)
@@ -486,29 +487,29 @@ class PureFastSAMInteractiveEnhanced:
         return None
     
     def _find_masks_in_box(self, box: Tuple) -> List[Dict]:
-        """查找框内的所有掩码"""
+        """Find all masks in box"""
         x1, y1, x2, y2 = box
         x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
         
         masks_in_box = []
         
         for idx, mask in enumerate(self.all_masks_cache):
-            # 计算掩码在框内的面积
+            # Calculate mask area in box
             mask_in_box = mask[y1:y2, x1:x2]
             intersection = np.sum(mask_in_box > 0)
             
             if intersection > 0:
-                # 计算覆盖率
+                # Calculate coverage
                 box_area = (x2 - x1) * (y2 - y1)
                 coverage = intersection / box_area if box_area > 0 else 0
                 
-                # 计算掩码中心
+                # Calculate mask center
                 mask_indices = np.where(mask > 0)
                 if len(mask_indices[0]) > 0:
                     mask_center_y = np.mean(mask_indices[0])
                     mask_center_x = np.mean(mask_indices[1])
                     
-                    # 计算中心距离
+                    # Calculate center distance
                     box_center_x = (x1 + x2) / 2
                     box_center_y = (y1 + y2) / 2
                     center_distance = np.sqrt((mask_center_x - box_center_x)**2 + 
@@ -524,45 +525,45 @@ class PureFastSAMInteractiveEnhanced:
                     'index': idx
                 })
         
-        # 按覆盖率和中心距离综合排序
+        # Sort by coverage and center distance
         masks_in_box.sort(key=lambda x: (x['coverage'], -x['center_distance']), reverse=True)
         return masks_in_box
     
     def _run_local_inference(self, box: Tuple) -> List[Dict]:
-        """对局部区域运行推理 - 修复版（解决偏移问题）"""
+        """Run inference on local region - fixed version (solves offset issue)"""
         x1, y1, x2, y2 = map(int, box)
         h, w = self.image.shape[:2]
         
-        # 确保边界框在图像范围内
+        # Ensure bounding box is within image bounds
         x1, y1 = max(0, x1), max(0, y1)
         x2, y2 = min(w, x2), min(h, y2)
         
         if x2 <= x1 or y2 <= y1:
             return []
         
-        # 扩展边界框，确保包含完整颗粒
+        # Expand bounding box to ensure complete grain is included
         expand_pixels = 20
         x1_exp = max(0, x1 - expand_pixels)
         y1_exp = max(0, y1 - expand_pixels)
         x2_exp = min(w, x2 + expand_pixels)
         y2_exp = min(h, y2 + expand_pixels)
         
-        # 裁剪区域
+        # Crop region
         crop = self.image[y1_exp:y2_exp, x1_exp:x2_exp]
         if crop.size == 0:
             return []
         
         try:
-            # 根据裁剪区域大小选择合适的推理尺寸
+            # Choose appropriate inference size based on crop size
             crop_h, crop_w = crop.shape[:2]
-            if crop_h * crop_w < 10000:  # 小区域
+            if crop_h * crop_w < 10000:  # Small region
                 imgsz = 256
-            elif crop_h * crop_w < 40000:  # 中等区域
+            elif crop_h * crop_w < 40000:  # Medium region
                 imgsz = 512
-            else:  # 大区域
+            else:  # Large region
                 imgsz = 1024
             
-            # 运行局部推理
+            # Run local inference
             results = self.fastsam_model(
                 crop,
                 device=self.device,
@@ -584,14 +585,14 @@ class PureFastSAMInteractiveEnhanced:
                 if np.sum(binary_mask) < 10:
                     continue
                 
-                # 调整掩码大小与裁剪区域一致
+                # Resize mask to match crop region
                 if binary_mask.shape[0] != crop_h or binary_mask.shape[1] != crop_w:
                     binary_mask = cv2.resize(binary_mask, (crop_w, crop_h), interpolation=cv2.INTER_NEAREST)
                 
-                # 计算掩码在原图中的位置
+                # Calculate mask position in original image
                 mask_h, mask_w = binary_mask.shape
                 
-                # 找到掩码的边界框
+                # Find mask bounding box
                 rows = np.any(binary_mask, axis=1)
                 cols = np.any(binary_mask, axis=0)
                 
@@ -599,26 +600,26 @@ class PureFastSAMInteractiveEnhanced:
                     y_min_local, y_max_local = np.where(rows)[0][[0, -1]]
                     x_min_local, x_max_local = np.where(cols)[0][[0, -1]]
                     
-                    # 转换到原图坐标
+                    # Convert to original image coordinates
                     x_min_global = x1_exp + x_min_local
                     y_min_global = y1_exp + y_min_local
                     x_max_global = x1_exp + x_max_local
                     y_max_global = y1_exp + y_max_local
                     
-                    # 确保掩码在原始框内有足够覆盖
+                    # Ensure mask has sufficient coverage in original box
                     overlap_x = max(0, min(x_max_global, x2) - max(x_min_global, x1))
                     overlap_y = max(0, min(y_max_global, y2) - max(y_min_global, y1))
                     overlap_area = overlap_x * overlap_y
                     original_box_area = (x2 - x1) * (y2 - y1)
                     
                     if original_box_area > 0 and overlap_area / original_box_area < 0.3:
-                        continue  # 跳过与原框重叠太少的掩码
+                        continue  # Skip masks with too little overlap with original box
                 
-                # 创建完整图像掩码
+                # Create full image mask
                 full_mask = np.zeros((h, w), dtype=np.uint8)
                 full_mask[y1_exp:y1_exp+mask_h, x1_exp:x1_exp+mask_w] = binary_mask
                 
-                # 增强掩码
+                # Enhance mask
                 enhanced_mask = self._enhance_mask_morphology(full_mask)
                 score = self._calculate_mask_quality(enhanced_mask)
                 
@@ -631,11 +632,11 @@ class PureFastSAMInteractiveEnhanced:
             return local_masks
             
         except Exception as e:
-            print(f"局部推理失败: {e}")
+            print(f"Local inference failed: {e}")
             return []
     
     def _create_grain_from_mask(self, mask_data: Dict) -> int:
-        """从掩码创建颗粒"""
+        """Create grain from mask"""
         self.current_grain_id += 1
         
         new_grain = {
@@ -646,7 +647,7 @@ class PureFastSAMInteractiveEnhanced:
             'bbox': None
         }
         
-        # 计算边界框
+        # Calculate bounding box
         if mask_data['mask'] is not None and np.any(mask_data['mask']):
             rows = np.any(mask_data['mask'], axis=1)
             cols = np.any(mask_data['mask'], axis=0)
@@ -659,12 +660,12 @@ class PureFastSAMInteractiveEnhanced:
         self.grains.append(new_grain)
         self.total_grains += 1
         
-        print(f"创建新颗粒 #{self.current_grain_id}, 质量: {new_grain['score']:.3f}")
+        print(f"Creating new grain #{self.current_grain_id}, quality: {new_grain['score']:.3f}")
         
         return self.current_grain_id
     
     def _draw_grain_with_text(self, grain):
-        """绘制单个颗粒及其文本标签"""
+        """Draw single grain and its text label"""
         try:
             grain_id = grain['id']
             mask = grain['mask']
@@ -672,22 +673,22 @@ class PureFastSAMInteractiveEnhanced:
             if mask is None or not np.any(mask):
                 return
             
-            # 找到轮廓
+            # Find contours
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             
             if len(contours) > 0:
                 largest_contour = max(contours, key=cv2.contourArea)
                 
-                # 简化轮廓
+                # Simplify contour
                 epsilon = 0.01 * cv2.arcLength(largest_contour, True)
                 approx = cv2.approxPolyDP(largest_contour, epsilon, True)
                 
                 if len(approx) >= 3:
-                    # 提取坐标
+                    # Extract coordinates
                     sx = approx[:, 0, 0]
                     sy = approx[:, 0, 1]
                     
-                    # 绘制填充多边形
+                    # Draw filled polygon
                     patch = self.ax.fill(sx, sy, 
                                        facecolor=grain['color'], 
                                        edgecolor='black',
@@ -695,7 +696,7 @@ class PureFastSAMInteractiveEnhanced:
                                        linewidth=1.5)
                     self.grain_patches[grain_id] = patch[0]
                     
-                    # 添加文本标签
+                    # Add text label
                     if grain['bbox']:
                         xmin, ymin, xmax, ymax = grain['bbox']
                         center_x = (xmin + xmax) / 2
@@ -713,12 +714,12 @@ class PureFastSAMInteractiveEnhanced:
                         self.grain_texts[grain_id] = text_obj
         
         except Exception as e:
-            print(f"绘制颗粒 #{grain.get('id', '未知')} 失败: {e}")
+            print(f"Failed to draw grain #{grain.get('id', 'unknown')}: {e}")
     
     def _refresh_grain_display(self):
-        """刷新所有颗粒的显示"""
+        """Refresh display of all grains"""
         try:
-            # 清除现有显示
+            # Clear existing display
             for patch in self.grain_patches.values():
                 patch.remove()
             self.grain_patches.clear()
@@ -727,16 +728,16 @@ class PureFastSAMInteractiveEnhanced:
                 text.remove()
             self.grain_texts.clear()
             
-            # 重新绘制所有颗粒
+            # Redraw all grains
             for grain in self.grains:
                 if grain['mask'] is not None:
                     self._draw_grain_with_text(grain)
             
             self.fig.canvas.draw()
-            print(f"已刷新显示，当前颗粒数: {len(self.grains)}")
+            print(f"Display refreshed, current grain count: {len(self.grains)}")
         
         except Exception as e:
-            print(f"刷新显示失败: {e}")
+            print(f"Failed to refresh display: {e}")
     
     def _on_mouse_press(self, event):
         """Handle mouse press events"""
@@ -776,13 +777,13 @@ class PureFastSAMInteractiveEnhanced:
             self.last_draw_time = current_time
     
     def _on_mouse_move(self, event):
-        """鼠标移动事件 - 优化版（减少重绘）"""
+        """Mouse move event - optimized (reduce redraw)"""
         if not self.drawing_box or event.inaxes != self.ax:
             return
         
         current_time = time.time()
         if current_time - self.last_draw_time < self.draw_interval:
-            return  # 限制重绘频率
+            return  # Limit redraw frequency
         
         if event.xdata is not None and event.ydata is not None:
             self.box_end = (event.xdata, event.ydata)
@@ -790,33 +791,33 @@ class PureFastSAMInteractiveEnhanced:
             self.last_draw_time = current_time
     
     def _on_mouse_release(self, event):
-        """鼠标释放事件"""
+        """Mouse release event"""
         if not self.drawing_box or event.inaxes != self.ax:
             return
         
-        if event.button == 1:  # 左键释放
+        if event.button == 1:  # Left button release
             self.drawing_box = False
             
             if self.box_start and self.box_end:
-                # 计算框坐标
+                # Calculate box coordinates
                 x1, y1 = self.box_start
                 x2, y2 = self.box_end
                 
-                # 确保坐标正确
+                # Ensure coordinates are correct
                 x1, x2 = min(x1, x2), max(x1, x2)
                 y1, y2 = min(y1, y2), max(y1, y2)
                 
                 box = (x1, y1, x2, y2)
                 box_area = (x2 - x1) * (y2 - y1)
                 
-                if box_area < 100:  # 如果框太小，视为点选
-                    print(f"点选: ({x1:.1f}, {y1:.1f})")
+                if box_area < 100:  # If box is too small，Treat as point selection
+                    print(f"Point select: ({x1:.1f}, {y1:.1f})")
                     self._handle_point_click(x1, y1)
                 else:
-                    print(f"框选: [{x1:.1f}, {y1:.1f}, {x2:.1f}, {y2:.1f}]")
+                    print(f"Box select: [{x1:.1f}, {y1:.1f}, {x2:.1f}, {y2:.1f}]")
                     self._handle_box_selection(box)
             
-            # 清除框显示
+            # Clear box display
             if self.box_artist:
                 self.box_artist.remove()
                 self.box_artist = None
@@ -826,15 +827,15 @@ class PureFastSAMInteractiveEnhanced:
             self.box_end = None
     
     def _draw_current_box(self):
-        """绘制当前框 - 优化版"""
+        """Draw current box - optimized"""
         if not self.box_start or not self.box_end:
             return
         
-        # 清除之前的框
+        # Clear previous box
         if self.box_artist:
             self.box_artist.remove()
         
-        # 绘制新框
+        # Draw new box
         x1, y1 = self.box_start
         x2, y2 = self.box_end
         
@@ -845,73 +846,73 @@ class PureFastSAMInteractiveEnhanced:
         
         self.box_artist = self.ax.add_patch(rect)
         
-        # 只更新框的部分，而不是整个图形
+        # Only update box part instead of entire figure
         self.fig.canvas.draw_idle()
     
     def _handle_point_click(self, x: float, y: float):
-        """处理点点击事件 - 修复版"""
-        # 查找点击位置的掩码
+        """Handle point click event - fixed version"""
+        # Find mask at click position
         mask_data = self._find_mask_at_point(x, y)
         
         if mask_data:
-            # 检查这个掩码是否已经被选择
+            # Check if this mask is already selected
             for grain in self.grains:
                 if np.array_equal(grain['mask'], mask_data['mask']):
-                    print(f"颗粒 #{grain['id']} 已被选择")
+                    print(f"Grain #{grain['id']} already selected")
                     return
             
-            # 创建新颗粒
+            # Create new grain
             grain_id = self._create_grain_from_mask(mask_data)
             self._refresh_grain_display()
         else:
-            # 尝试在点周围进行局部推理
-            print("未找到掩码，进行局部推理...")
+            # Try local inference around the point
+            print("Mask not found, running local inference...")
             box_size = 50
             box = (x - box_size, y - box_size, x + box_size, y + box_size)
             local_masks = self._run_local_inference(box)
             
             if local_masks:
-                # 选择质量最高的掩码
+                # Select highest quality mask
                 best_local_mask = max(local_masks, key=lambda x: x['score'])
                 grain_id = self._create_grain_from_mask(best_local_mask)
                 self._refresh_grain_display()
-                print(f"局部推理成功，生成新掩码")
+                print(f"Local inference successful, generated new mask")
             else:
-                print("未找到该位置的掩码")
+                print("No mask found at this location")
     
     def _handle_box_selection(self, box: Tuple):
-        """处理框选择事件 - 修复版"""
-        # 查找框内的掩码
+        """Handle box selection event - fixed version"""
+        # Find masks in box
         masks_in_box = self._find_masks_in_box(box)
         
         if masks_in_box:
-            # 选择最佳掩码（覆盖率最高，中心距离最近）
+            # Select best mask (highest coverage, closest center)
             best_mask = masks_in_box[0]
             
-            # 检查这个掩码是否已经被选择
+            # Check if mask already selected
             for grain in self.grains:
                 if np.array_equal(grain['mask'], best_mask['mask']):
-                    print(f"颗粒 #{grain['id']} 已被选择")
+                    print(f"grain #{grain['id']} already selected")
                     return
             
-            # 创建新颗粒
+            # Create new grain
             grain_id = self._create_grain_from_mask(best_mask)
             self._refresh_grain_display()
             
-            print(f"选择了框内最佳掩码，覆盖率: {best_mask['coverage']:.3f}")
+            print(f"Selected best mask in box, coverage: {best_mask['coverage']:.3f}")
         else:
-            # 如果没有找到掩码，运行局部推理
-            print("未找到框内掩码，进行局部推理...")
+            # If no mask found, run local inference
+            print("No mask found in box, running local inference...")
             local_masks = self._run_local_inference(box)
             
             if local_masks:
-                # 选择质量最高的掩码
+                # Select highest quality mask
                 best_local_mask = max(local_masks, key=lambda x: x['score'])
                 grain_id = self._create_grain_from_mask(best_local_mask)
                 self._refresh_grain_display()
-                print(f"局部推理成功，生成新掩码")
+                print(f"Local inference successful, generated new mask")
             else:
-                print("局部推理也未生成掩码")
+                print("Local inference also did not generate mask")
     
     def _start_scale_calibration(self):
         """Start scale calibration mode"""
@@ -965,7 +966,7 @@ class PureFastSAMInteractiveEnhanced:
             self._generate_complete_outputs()
     
     def _delete_last_grain(self):
-        """删除最后一个颗粒"""
+        """Delete last grain"""
         if self.grains:
             last_grain = self.grains[-1]
             grain_id = last_grain['id']
@@ -987,10 +988,10 @@ class PureFastSAMInteractiveEnhanced:
                 self.current_grain_id = 0
             
             self.fig.canvas.draw()
-            print(f"已删除颗粒 #{grain_id}")
+            print(f"Deleted grain #{grain_id}")
     
     def _delete_all_grains(self):
-        """删除所有颗粒"""
+        """Delete all grains"""
         for patch in self.grain_patches.values():
             patch.remove()
         self.grain_patches.clear()
@@ -1003,7 +1004,7 @@ class PureFastSAMInteractiveEnhanced:
         self.current_grain_id = 0
         
         self.fig.canvas.draw()
-        print("已删除所有颗粒")
+        print("All grains deleted")
     
     def _show_help(self):
         """Show help information"""
@@ -1067,18 +1068,18 @@ class PureFastSAMInteractiveEnhanced:
             )
     
     def _reset_interface(self):
-        """重置整个界面"""
+        """Reset entire interface"""
         self._delete_all_grains()
         
-        # 重新运行全图推理
+        # Rerun full image inference
         if self.image is not None:
             self._run_global_inference()
         
         self.ax.clear()
         self.ax.imshow(self.image)
         
-        image_name = Path(self.image_path).name if self.image_path else "未命名图片"
-        title_text = f"FastSAM增强版交互式分割 - {image_name}"
+        image_name = Path(self.image_path).name if self.image_path else "Unnamed image"
+        title_text = f"FastSAM Enhanced Interactive Segmentation - {image_name}"
         self.ax.set_title(title_text, fontsize=16, fontproperties='Microsoft YaHei')
         
         self.ax.set_xticks([])
@@ -1087,22 +1088,22 @@ class PureFastSAMInteractiveEnhanced:
         self._show_help_text_fixed()
         self.fig.canvas.draw()
         
-        print("界面已完全重置")
+        print("Interface completely reset")
     
     def show_interactive_interface(self):
-        """显示交互式界面"""
+        """Show interactive interface"""
         if self.image is None:
-            print("请先加载图片")
+            print("Please load image first")
             return
         
         if self.fastsam_model is None:
-            print("FastSAM模型未初始化")
+            print("FastSAM model not initialized")
             return
         
-        print("正在创建交互式界面...")
+        print("Creating interactive interface...")
         
         try:
-            # 设置中文字体
+            # Set Chinese font
             try:
                 import matplotlib
                 from matplotlib import rcParams
@@ -1121,20 +1122,20 @@ class PureFastSAMInteractiveEnhanced:
                     rcParams['axes.unicode_minus'] = False
                     
             except Exception as e:
-                print(f"设置中文字体失败: {e}")
+                print(f"Failed to set Chinese font: {e}")
             
-            # 创建图形
+            # Create figure
             self.fig, self.ax = plt.subplots(figsize=(14, 10))
             self.ax.imshow(self.image)
             
-            image_name = Path(self.image_path).name if self.image_path else "未命名图片"
-            title_text = f"FastSAM增强版交互式分割 - {image_name}"
+            image_name = Path(self.image_path).name if self.image_path else "Unnamed image"
+            title_text = f"FastSAMEnhanced interactive segmentation - {image_name}"
             self.ax.set_title(title_text, fontsize=16, fontproperties='Microsoft YaHei')
             
             self.ax.set_xticks([])
             self.ax.set_yticks([])
             
-            # 连接事件
+            # Connect events
             self.fig.canvas.mpl_connect('button_press_event', self._on_mouse_press)
             self.fig.canvas.mpl_connect('motion_notify_event', self._on_mouse_move)
             self.fig.canvas.mpl_connect('button_release_event', self._on_mouse_release)
@@ -1144,57 +1145,57 @@ class PureFastSAMInteractiveEnhanced:
             
             plt.tight_layout()
             
-            print("FastSAM交互式界面已启动")
-            print("提示:")
-            print("  1. 左键拖动绘制选择框")
-            print("  2. 左键单击点选小颗粒")
-            print("  3. 按 'Shift+S' 快速保存结果")
+            print("FastSAM interactive interface started")
+            print("Tips:")
+            print("  1. Left drag to draw selection box")
+            print("  2. Left click to point select small grains")
+            print("  3. Press 'Shift+S' to quickly save results")
             
             self.gui_running = True
             
             if backend == 'Agg':
-                print("检测到无GUI环境，将保存结果图片")
+                print("No GUI environment detected, will save result image")
                 output_path = self.output_dir / "interactive_result.png"
                 self.fig.savefig(output_path, dpi=300, bbox_inches='tight')
-                print(f"结果已保存到: {output_path}")
+                print(f"Results saved to: {output_path}")
                 plt.close(self.fig)
                 return
             
             plt.show(block=True)
             
-            print("交互式窗口已关闭")
+            print("Interactive window closed")
             
         except Exception as e:
-            print(f"显示交互界面失败: {e}")
+            print(f"Failed to display interactive interface: {e}")
             traceback.print_exc()
     
     def run_interactive_mode(self, image_path: str = None):
-        """运行完整的交互式模式"""
+        """Run complete interactive mode"""
         try:
             if not self.model_loaded:
-                print("模型未加载，无法运行交互模式")
+                print("Model not loaded, cannot run interactive mode")
                 return
             
             if image_path:
-                print(f"加载指定图片: {image_path}")
+                print(f"Loading specified image: {image_path}")
                 if not self.load_image_from_path(image_path):
-                    print("图片加载失败，退出交互模式")
+                    print("Image loading failed, exiting interactive mode")
                     return
             else:
-                print("请通过文件选择对话框选择图片...")
+                print("Please select image through file dialog...")
                 if not self.load_image_with_gui():
-                    print("图片选择失败，退出交互模式")
+                    print("Image selection failed, exiting interactive mode")
                     return
             
-            print("启动交互式界面...")
+            print("Starting interactive interface...")
             self.show_interactive_interface()
             
         except Exception as e:
-            print(f"交互模式运行失败: {e}")
+            print(f"Interactive mode failed: {e}")
             traceback.print_exc()
     
     def _masks_to_polygons(self) -> List[ShapelyPolygon]:
-        """将掩码转换为多边形列表"""
+        """Convert masks to polygon list"""
         polygons = []
         
         for grain in self.grains:
@@ -1223,12 +1224,12 @@ class PureFastSAMInteractiveEnhanced:
                                 polygons.append(polygon)
                     
                 except Exception as e:
-                    print(f"转换掩码为多边形失败（颗粒#{grain['id']}）: {e}")
+                    print(f"Failed to convert mask to polygon (grain#{grain['id']}): {e}")
         
         return polygons
     
     def _generate_grain_dataframe(self) -> pd.DataFrame:
-        """生成颗粒DataFrame - 修复几何计算问题"""
+        """Generate grain DataFrame - fix geometry calculation issues"""
         if len(self.grains) == 0:
             return pd.DataFrame()
         
@@ -1250,7 +1251,7 @@ class PureFastSAMInteractiveEnhanced:
                         bbox_width = x_max - x_min
                         bbox_height = y_max - y_min
                         
-                        # 计算周长
+                        # Calculate perimeter
                         perimeter = 0
                         try:
                             mask_uint8 = (mask * 255).astype(np.uint8)
@@ -1263,10 +1264,10 @@ class PureFastSAMInteractiveEnhanced:
                                 largest_contour = max(contours, key=cv2.contourArea)
                                 perimeter = cv2.arcLength(largest_contour, True)
                         except Exception:
-                            # 近似计算
+                            # Approximate calculation
                             perimeter = 4 * np.sqrt(area) * 0.9
                         
-                        # 计算基本几何参数
+                        # Calculate basic geometry parameters
                         circularity = 0
                         if perimeter > 0:
                             circularity = (4 * np.pi * area) / (perimeter ** 2)
@@ -1298,30 +1299,30 @@ class PureFastSAMInteractiveEnhanced:
             
             basic_df = pd.DataFrame(basic_data)
             
-            # 添加缺少的列以匹配GrainShapeMetrics的期望
+            # Add missing columns to matchGrainShapeMetricsexpectation
             if 'major_axis_length' not in basic_df.columns:
-                # 估算主轴长度
+                # Estimate major axis length
                 basic_df['major_axis_length'] = basic_df['bbox_width']
             
             if 'minor_axis_length' not in basic_df.columns:
-                # 估算次轴长度
+                # Estimate minor axis length
                 basic_df['minor_axis_length'] = basic_df['bbox_height']
             
             if 'orientation' not in basic_df.columns:
-                # 默认方向
+                # Default orientation
                 basic_df['orientation'] = 0.0
             
             return basic_df
                 
         except Exception as e:
-            print(f"生成颗粒数据失败: {e}")
+            print(f"Failed to generate grain data: {e}")
             traceback.print_exc()
             return pd.DataFrame()
     
     def _generate_complete_outputs(self, output_dir: Optional[Path] = None) -> Path:
-        """生成完整输出文件"""
+        """Generate complete output files"""
         if len(self.grains) == 0:
-            print("没有分割颗粒，无法生成输出文件")
+            print("No segmented grains, cannot generate output files")
             return None
         
         if output_dir is None:
@@ -1332,41 +1333,41 @@ class PureFastSAMInteractiveEnhanced:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        print(f"\n生成完整输出到: {output_dir}")
+        print(f"\nGenerating complete output to: {output_dir}")
         
         try:
-            # 1. 生成多边形
+            # 1. Generate polygons
             self.polygons = self._masks_to_polygons()
             
             if len(self.polygons) == 0:
-                print("无法生成有效多边形")
+                print("Cannot generate valid polygons")
                 return None
             
-            print(f"生成了 {len(self.polygons)} 个多边形")
+            print(f"Generated {len(self.polygons)} polygons")
             
-            # 2. 生成颗粒数据
+            # 2. Generate grain data
             self.grain_data = self._generate_grain_dataframe()
             
             if self.grain_data.empty:
-                print("无法生成颗粒数据")
+                print("Cannot generate grain data")
                 return None
             
-            print(f"颗粒数据包含 {len(self.grain_data.columns)} 个参数")
+            print(f"Grain data contains {len(self.grain_data.columns)} parameters")
             
-            # 3. 保存交互式界面截图
+            # 3. Save interactive interface screenshot
             if self.fig is not None:
                 vis_path = output_dir / "interactive_visualization.png"
                 try:
                     self.fig.savefig(vis_path, dpi=300, bbox_inches='tight')
-                    print(f"交互式界面截图保存至: {vis_path}")
+                    print(f"Interactive interface screenshot saved to: {vis_path}")
                 except Exception as e:
-                    print(f"保存交互式界面截图失败: {e}")
+                    print(f"Failed to save interactive interface screenshot: {e}")
             
-            # 4. 生成YOLO风格可视化图
+            # 4. GenerateYOLOstyle visualization
             if self.image is not None:
                 fig, axes = plt.subplots(1, 2, figsize=(20, 10))
                 
-                # 左侧：轮廓图
+                # Left: contour map
                 axes[0].imshow(self.image)
                 axes[0].set_title(f'FastSAM Grain Segmentation (n={len(self.polygons)})', fontsize=16)
                 axes[0].axis('off')
@@ -1376,7 +1377,7 @@ class PureFastSAMInteractiveEnhanced:
                         x, y = poly.exterior.xy
                         axes[0].plot(x, y, color='red', linewidth=1, alpha=0.8)
                 
-                # 右侧：彩色填充图
+                # Right: colored fill map
                 axes[1].imshow(self.image)
                 axes[1].set_title('Colored Grain Annotation', fontsize=16)
                 axes[1].axis('off')
@@ -1393,9 +1394,9 @@ class PureFastSAMInteractiveEnhanced:
                 fig.savefig(plot_path, dpi=300, bbox_inches='tight', facecolor='white')
                 plt.close(fig)
                 
-                print(f"YOLO风格可视化图保存至: {plot_path}")
+                print(f"YOLO-style visualization saved to: {plot_path}")
             
-            # 5. 保存CSV文件
+            # 5. SaveCSVfile
             if not self.grain_data.empty:
                 csv_path = output_dir / "grain_statistics.csv"
                 
@@ -1412,14 +1413,14 @@ class PureFastSAMInteractiveEnhanced:
                         else:
                             self.grain_data.to_csv(csv_path, index=False, encoding='utf-8')
                     except Exception as e:
-                        print(f"配置筛选失败: {e}")
+                        print(f"Configuration filtering failed: {e}")
                         self.grain_data.to_csv(csv_path, index=False, encoding='utf-8')
                 else:
                     self.grain_data.to_csv(csv_path, index=False, encoding='utf-8')
                 
-                print(f"颗粒统计表保存至: {csv_path}")
+                print(f"Grain statistics table saved to: {csv_path}")
             
-            # 6. 创建JSON摘要
+            # 6. CreateJSONSummary
             summary = {
                 'image_path': str(self.image_path) if self.image_path else "GUI_selected",
                 'image_name': Path(self.image_path).name if self.image_path else "interactive",
@@ -1440,48 +1441,48 @@ class PureFastSAMInteractiveEnhanced:
             json_path = output_dir / "summary.json"
             with open(json_path, 'w', encoding='utf-8') as f:
                 json.dump(summary, f, indent=2, ensure_ascii=False)
-            print(f"JSON摘要保存至: {json_path}")
+            print(f"JSON summary saved to: {json_path}")
             
-            print(f"\n所有结果已保存到: {output_dir}")
+            print(f"\nAll results saved to: {output_dir}")
             
             return output_dir
             
         except Exception as e:
-            print(f"生成完整输出失败: {e}")
+            print(f"Failed to generate complete output: {e}")
             traceback.print_exc()
             return None
     
     def _show_save_options(self):
-        """显示保存选项"""
+        """Show save options"""
         if len(self.grains) == 0:
-            print("没有颗粒可保存")
+            print("No grains to save")
             return
         
-        save_choice = input("\n保存选项:\n1. 快速保存完整结果\n2. 自定义保存路径\n3. 取消\n选择 (1-3): ").strip()
+        save_choice = input("\nSave options:\n1. Quick save complete results\n2. Custom save path\n3. Cancel\nSelect (1-3): ").strip()
         
         if save_choice == '1':
             output_dir = self._generate_complete_outputs()
             if output_dir:
-                print(f"结果已保存到: {output_dir}")
+                print(f"Results saved to: {output_dir}")
         elif save_choice == '2':
             try:
                 root = tk.Tk()
                 root.withdraw()
-                folder_path = filedialog.askdirectory(title="选择保存目录")
+                folder_path = filedialog.askdirectory(title="Select save directory")
                 root.destroy()
                 
                 if folder_path:
                     output_dir = self._generate_complete_outputs(Path(folder_path))
                     if output_dir:
-                        print(f"结果已保存到: {output_dir}")
+                        print(f"Results saved to: {output_dir}")
             except Exception as e:
-                print(f"保存失败: {e}")
+                print(f"Save failed: {e}")
 
 
 def main():
-    """主函数：直接运行增强版交互式FastSAM"""
+    """Main function：DirectRunEnhanced interactiveFastSAM"""
     print("=" * 70)
-    print("FastSAM增强版交互式分割系统（修复版）")
+    print("FastSAM Enhanced Interactive Segmentation System (Fixed Version)")
     print("=" * 70)
     
     model_path = "models/FastSAM-s.pt"

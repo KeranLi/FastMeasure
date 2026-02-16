@@ -81,9 +81,19 @@ class RockMobileSystem:
         # New: Load geometry configuration
         self.geometry_config = load_geometry_config("geometry_config.yaml")
         
-        # Set output directory
-        self.output_root = Path(self.config['output']['root_dir'])
+        # Set up unified output directory structure
+        # results/{mode}/{type}/ (e.g., results/mobilesam/auto/)
+        output_config = self.config.get('output', {})
+        root_dir = output_config.get('root_dir', 'results')
+        mode_subdir = output_config.get('mode_subdir', 'mobilesam')
+        type_subdir = output_config.get('type_subdir', 'auto')
+        
+        self.output_root = Path(root_dir) / mode_subdir / type_subdir
         self.output_root.mkdir(parents=True, exist_ok=True)
+        
+        # Also ensure parent directories exist for other modes
+        (Path(root_dir) / 'logs').mkdir(parents=True, exist_ok=True)
+        (Path(root_dir) / 'temp').mkdir(parents=True, exist_ok=True)
         
         # Initialize logging system
         self._setup_logging()
@@ -239,13 +249,19 @@ class RockMobileSystem:
             self.logger.info("Scale detection feature is disabled")
     
     def _setup_logging(self):
-        """Setup logging system"""
+        """Setup logging system with unified directory structure"""
         log_config = self.config['logging']
-        log_dir = self.output_root / "logs"
+        
+        # Unified log directory: results/logs/{mode}/
+        output_config = self.config.get('output', {})
+        root_dir = output_config.get('root_dir', 'results')
+        log_subdir = log_config.get('log_subdir', 'mobilesam')
+        
+        log_dir = Path(root_dir) / 'logs' / log_subdir
         log_dir.mkdir(parents=True, exist_ok=True)
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_file = log_dir / f"mobile_sam_{timestamp}.log"
+        log_file = log_dir / f"mobilesam_{timestamp}.log"
         
         log_level = getattr(logging, log_config['level'])
         
