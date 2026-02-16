@@ -22,10 +22,16 @@ All development progress, feature updates and architecture changes of this proje
 ## 2026-02-16
 
 - **Modifier:** Core Team
-- **Modification Type:** Documentation
-- **Involved Files:** `README.md`
+- **Modification Type:** Feature Addition + Documentation
+- **Involved Files:** `core/yolo_trainer.py`, `train_yolo.py`, `README.md`
 
 **Specific Content:**
+- **YOLO Fine-tuning Module**: Added `core/yolo_trainer.py` providing YOLO model fine-tuning capabilities similar to segmenteverygrain's U-Net fine-tuning:
+  - `YOLOFineTuner` class with easy-to-use API
+  - Auto-dataset generation from interactive segmentation results
+  - Support for training from scratch or fine-tuning existing models
+  - Built-in data augmentation and automatic train/val/test splitting
+  - CLI script `train_yolo.py` for command-line usage
 - **Acknowledgment**: Added clear acknowledgment of [segmenteverygrain](https://github.com/zsylvester/segmenteverygrain) by Zoltán Sylvester as the inspiration for this project.
 - **Comparison Table**: Added detailed feature comparison table highlighting key improvements:
   - YOLO-based detection vs U-Net (patch-based)
@@ -35,6 +41,7 @@ All development progress, feature updates and architecture changes of this proje
   - 10+ geometric parameters including fractal dimension
   - Standalone GUI vs Jupyter notebook
   - Command-line batch processing
+  - YOLO fine-tuning vs U-Net fine-tuning
   - Modular architecture with CLI
 
 ---

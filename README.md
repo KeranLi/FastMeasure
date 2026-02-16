@@ -21,12 +21,27 @@ While segmenteverygrain pioneered the use of SAM for grain segmentation, FastMea
 | Geometric Parameters | Basic shape metrics | **10+ parameters including fractal dimension, angularity** |
 | Interactive Mode | Jupyter notebook based | **Standalone GUI with unified key controls** |
 | Batch Processing | Notebook-based | **Command-line batch processing** |
+| Model Fine-tuning | U-Net (TensorFlow) | **YOLO (Ultralytics, easier)** |
+| Training Data | Manual annotation | **Auto from interactive results** |
 | Code Structure | Notebook + modules | **Modular core library with CLI** |
 
 The system supports three usage modes:
 - **Auto Processing Mode**: YOLO detection + SAM auto segmentation
 - **Batch Processing Mode**: Batch processing of all images in a folder
 - **Interactive Mode**: Manual point selection for fine segmentation via GUI
+
+### Model Fine-tuning
+
+Similar to segmenteverygrain's U-Net fine-tuning, FastMeasure supports **YOLO model fine-tuning** to improve detection accuracy on your specific rock types:
+
+```bash
+# Quick fine-tune from interactive segmentation results
+python train_yolo.py --mode quick --input results/mobilesam/interactive/
+
+# The fine-tuned model can then be used for better detection
+```
+
+See [Model Training Guide](#model-training) below for detailed instructions.
 
 ## Core Features
 
@@ -201,6 +216,95 @@ The system is fully compatible with macOS. However, please note:
 - Interactive mode requires a display (not supported on remote SSH without X11)
 - File dialogs run on main thread to ensure macOS compatibility
 
+## Model Training
+
+FastMeasure includes a **YOLO Fine-tuning Module** (`train_yolo.py`) that allows you to improve detection accuracy on your specific rock types, similar to segmenteverygrain's U-Net fine-tuning capability.
+
+### Why Fine-tune?
+
+- **Better Accuracy**: YOLO models trained on generic datasets may miss specific grain types in your samples
+- **Adapt to New Rock Types**: Fine-tune on your own thin-section images for best results
+- **Iterative Improvement**: Use interactive mode results as training data
+
+### Quick Start
+
+The easiest way to fine-tune is using your interactive segmentation results:
+
+```bash
+# Step 1: Generate some training data using interactive mode
+python run.py mobilesam --interactive
+# Segment several images and save the results
+
+# Step 2: Fine-tune YOLO using those results
+python train_yolo.py --mode quick --input results/mobilesam/interactive/ --epochs 50
+
+# Step 3: Use the fine-tuned model
+cp training_outputs/runs/train_*/weights/best.pt ./models/my_finetuned_yolo.pt
+# Update config.yaml: yolo: "./models/my_finetuned_yolo.pt"
+```
+
+### Training Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--mode` | Training mode: `quick` (from interactive results) or `train` (from dataset) | `quick` |
+| `--input` | Directory containing interactive mode results | Required for `quick` |
+| `--data` | Path to YOLO-format dataset YAML | Required for `train` |
+| `--base` | Base model: `yolov8n/s/m/l/x.pt` or path to `.pt` file | `yolov8n.pt` |
+| `--epochs` | Number of training epochs | 50 |
+| `--imgsz` | Input image size | 1024 |
+| `--batch` | Batch size (reduce if out of memory) | 8 |
+| `--device` | Device: `auto`, `cpu`, `cuda`, `mps` | `auto` |
+
+### Advanced Usage
+
+```bash
+# Fine-tune from existing model with more epochs
+python train_yolo.py --mode quick \
+                     --input results/mobilesam/interactive/ \
+                     --base ./models/best_yolo_20260107.pt \
+                     --epochs 100 \
+                     --imgsz 1024
+
+# Use larger model for better accuracy (slower)
+python train_yolo.py --mode quick \
+                     --input results/interactive/ \
+                     --base yolov8m.pt \
+                     --epochs 50
+
+# Train with custom YOLO-format dataset
+python train_yolo.py --mode train \
+                     --data ./my_grain_dataset/dataset.yaml \
+                     --epochs 200
+```
+
+### Dataset Format (for Custom Training)
+
+If you have existing annotations, you can create a YOLO-format dataset:
+
+```
+dataset/
+├── images/
+│   ├── train/
+│   ├── val/
+│   └── test/
+├── labels/
+│   ├── train/
+│   ├── val/
+│   └── test/
+└── dataset.yaml
+```
+
+`dataset.yaml` format:
+```yaml
+path: /path/to/dataset
+train: images/train
+val: images/val
+test: images/test
+nc: 1
+names: ['grain']
+```
+
 ## Configuration File Guide
 
 ### Main Configuration File (`config.yaml` / `config_mobilesam.yaml`)
@@ -306,6 +410,7 @@ results/
 ├── run.py                      # Unified entry script (new)
 ├── run_fastsam.py              # FastSAM startup script
 ├── run_mobilesam.py            # MobileSAM startup script (supports interactive mode)
+├── train_yolo.py               # YOLO model training/fine-tuning script (new)
 ├── mobilesam_interactive.py    # MobileSAM standalone interactive tool
 ├── config.yaml                 # FastSAM configuration file
 ├── config_mobilesam.yaml       # MobileSAM configuration file
@@ -316,7 +421,8 @@ results/
 │   ├── seg_tools.py            # Shared tool functions
 │   ├── seg_optimize.py         # Shared segmentation optimization
 │   ├── cli_base.py             # Shared CLI functions
-│   └── scale_calibration.py    # Manual scale calibration (new)
+│   ├── scale_calibration.py    # Manual scale calibration (new)
+│   └── yolo_trainer.py         # YOLO fine-tuning module (new)
 │
 ├── fastsam/                    # FastSAM module
 │   ├── rock_fastsam_system.py  # FastSAM main system
