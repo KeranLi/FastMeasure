@@ -248,6 +248,38 @@ After processing is complete, the system generates the following files in the ou
 | `summary.json` | Processing summary information (JSON format) |
 | `performance.json` | Performance statistics information |
 
+### Unified Output Directory Structure
+
+All results are now organized under a unified `results/` directory:
+
+```
+results/
+├── fastsam/                    # FastSAM results
+│   ├── auto/                   # Automatic processing results
+│   │   └── [image_name]/
+│   │       ├── segmentation_result.png
+│   │       ├── segmentation_labeled.png
+│   │       ├── segmentation_mask.png
+│   │       ├── grain_statistics.csv
+│   │       └── summary.json
+│   └── interactive/            # Interactive processing results
+│       └── [timestamp]/
+│           └── ...
+├── mobilesam/                  # MobileSAM results
+│   ├── auto/                   # Automatic processing results
+│   └── interactive/            # Interactive processing results
+├── logs/                       # Unified log directory
+│   ├── fastsam/                # FastSAM logs
+│   └── mobilesam/              # MobileSAM logs
+└── temp/                       # Temporary files and cache
+```
+
+**Benefits:**
+- All results in one place - easy to find and manage
+- Clear separation between modes (FastSAM/MobileSAM) and types (auto/interactive)
+- Unified logs for easier debugging
+- No scattered result folders in project root
+
 ## Project Structure
 
 ```

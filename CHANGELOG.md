@@ -293,6 +293,62 @@ All optimizations maintain backward compatibility:
 
 ---
 
+## 2026-02-16 - Unified Output Directory Structure
+
+- **Modifier:** AI Assistant
+- **Modification Type:** Architecture Improvement
+- **Involved Files:** `config.yaml`, `config_mobilesam.yaml`, `fastsam/rock_fastsam_system.py`, `mobilesam/rock_mobilesam_system.py`, `fastsam_interactive.py`, `mobilesam_interactive.py`
+
+### Problem
+Multiple scattered output directories in project root:
+- `results/` - FastSAM auto results
+- `results_mobilesam/` - MobileSAM auto results
+- `interactive_results/` - MobileSAM interactive results
+- `interactive_fastsam_results/` - FastSAM interactive results
+
+This made it difficult to find and manage results.
+
+### Solution
+Implemented unified output directory structure:
+
+```
+results/
+├── fastsam/
+│   ├── auto/
+│   └── interactive/
+├── mobilesam/
+│   ├── auto/
+│   └── interactive/
+├── logs/
+│   ├── fastsam/
+│   └── mobilesam/
+└── temp/
+```
+
+### Changes
+
+#### 1. Configuration Files
+- Added `mode_subdir` and `type_subdir` options to output config
+- Added `log_subdir` to logging config
+- Updated both `config.yaml` and `config_mobilesam.yaml`
+
+#### 2. System Files
+- Modified `rock_fastsam_system.py` and `rock_mobilesam_system.py`
+- Output path now constructed as: `{root_dir}/{mode_subdir}/{type_subdir}/`
+- Log path now constructed as: `{root_dir}/logs/{log_subdir}/`
+
+#### 3. Interactive Scripts
+- Updated `fastsam_interactive.py`: output dir changed to `results/fastsam/interactive/`
+- Updated `mobilesam_interactive.py`: output dir changed to `results/mobilesam/interactive/`
+
+### Benefits
+- All results in one place
+- Clear separation between modes and processing types
+- Unified logs for easier debugging
+- Cleaner project root directory
+
+---
+
 ### Future Optimization Suggestions
 
 1. **Merge interactive scripts** - Combine 4 interactive scripts into 1
