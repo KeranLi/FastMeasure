@@ -57,7 +57,7 @@ try:
     MOBILESAM_AVAILABLE = True
 except ImportError:
     MOBILESAM_AVAILABLE = False
-    print("MobileSAM库未安装")
+    print("MobileSAM library not installed")
 
 try:
     project_root = Path(__file__).parent.parent
@@ -93,7 +93,7 @@ try:
     PROJECT1_AVAILABLE = True
 except ImportError as e:
     PROJECT1_AVAILABLE = False
-    print(f"项目一函数不可用: {e}")
+    print(f"Project one functions unavailable: {e}")
 
 
 class PureMobileSAMInteractiveEnhanced:

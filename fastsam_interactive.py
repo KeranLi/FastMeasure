@@ -83,7 +83,7 @@ try:
         merge_overlapping_polygons
     )
     PROJECT1_AVAILABLE = True
-    print("成功导入项目一计算函数")
+    print("Successfully imported project one calculation functions")
     print(f"   模块位置: {project1_dir}")
 except ImportError as e:
     print(f"导入项目一计算函数失败: {e}")

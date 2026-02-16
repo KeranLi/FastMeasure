@@ -22,6 +22,37 @@ warnings.filterwarnings('ignore')
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
+def get_terminal_width(default: int = 70) -> int:
+    """
+    Get terminal width for adaptive display
+    
+    Args:
+        default: Default width if cannot determine
+        
+    Returns:
+        Terminal width in characters
+    """
+    try:
+        import shutil
+        columns, _ = shutil.get_terminal_size()
+        return max(columns, 40)  # Minimum 40 characters
+    except Exception:
+        return default
+
+
+def print_separator(char: str = "=", width: Optional[int] = None):
+    """
+    Print a separator line that adapts to terminal width
+    
+    Args:
+        char: Character to use for separator
+        width: Fixed width, or None for auto-detect
+    """
+    if width is None:
+        width = get_terminal_width()
+    print(char * width)
+
+
 class ImageProcessor:
     """Image Processor - Provides image loading, conversion and preprocessing functions"""
     

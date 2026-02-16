@@ -1,7 +1,7 @@
 """
-UltraFastSAM终极引擎 - 专门针对岩石颗粒优化
-文件名：seg_engine.py
-功能：解决所有FastSAM在岩石颗粒分割中的问题
+UltraFastSAM Ultimate Engine - Specially optimized for rock grains
+Filename: seg_engine.py
+Function: Solves all FastSAM issues in rock grain segmentation
 """
 
 import numpy as np
@@ -16,60 +16,60 @@ import warnings
 warnings.filterwarnings('ignore')
 
 class UltraFastSAM:
-    """终极FastSAM引擎，专为岩石颗粒分割设计"""
+    """Ultimate FastSAM engine, designed for rock grain segmentation"""
     
     def __init__(self, model_path: str = "../models/FastSAM-s.pt", device: str = "cpu"):
         """
-        初始化终极FastSAM引擎
+        Initialize Ultimate FastSAM engine
         
         Args:
-            model_path: FastSAM模型路径
-            device: 运行设备 ('cpu' 或 'cuda')
+            model_path: FastSAM model path
+            device: Device to run on ('cpu' or 'cuda')
         """
         print("=" * 60)
-        print("🚀 初始化UltraFastSAM终极引擎...")
+        print("🚀 Initializing UltraFastSAM Ultimate Engine...")
         print("=" * 60)
         
         self.device = device
         
-        # 加载模型
+        # Load model
         try:
             self.model = FastSAM(model_path)
             self.model.to(device=self.device)
-            print(f"✅ FastSAM模型加载成功 (设备: {device})")
+            print(f"✅ FastSAM model loaded successfully (device: {device})")
         except Exception as e:
-            print(f"❌ 模型加载失败: {e}")
+            print(f"❌ Model loading failed: {e}")
             raise
         
-        # === 超优化参数（专门针对岩石颗粒）===
+        # === Hyper-optimized parameters (specially for rock grains) ===
         self.params = {
-            # 全局推理参数（用于快速获取候选掩码）
+            # Global inference parameters (for quickly obtaining candidate masks)
             'global': {
-                'imgsz': 1024,      # 大尺寸，保留小颗粒
-                'conf': 0.15,       # 低置信度，提高召回率
-                'iou': 0.3,         # 低IoU，避免抑制
+                'imgsz': 1024,      # Large size, preserve small grains
+                'conf': 0.15,       # Low confidence, improve recall
+                'iou': 0.3,         # Low IoU, avoid suppression
                 'retina_masks': True
             },
-            # 框内推理参数（用于精细分割）
+            # Box interior inference parameters (for fine segmentation)
             'local': {
                 'imgsz': 512,       # 中等尺寸
                 'conf': 0.1,        # 极低置信度
                 'iou': 0.2          # 极低IoU
             },
-            # 小颗粒专用参数
+            # Small grain specific parameters
             'small': {
                 'imgsz': 256,       # 小尺寸
                 'conf': 0.05,       # 极低置信度
                 'iou': 0.1          # 极低IoU
             },
-            # 掩码过滤参数
+            # Mask filtering parameters
             'filter': {
-                'min_area': 10,     # 最小面积10像素（岩石颗粒很小）
-                'max_area_ratio': 0.8,  # 最大面积比例
-                'min_solidity': 0.3,    # 最小实心度
-                'min_extent': 0.1       # 最小范围
+                'min_area': 10,     # Minimum area 10 pixels (rock grains are small)
+                'max_area_ratio': 0.8,  # Maximum area ratio
+                'min_solidity': 0.3,    # Minimum solidity
+                'min_extent': 0.1       # Minimum extent
             },
-            # 形态学参数
+            # Morphological parameters
             'morphology': {
                 'small_kernel': (3, 3),
                 'medium_kernel': (5, 5),
@@ -79,7 +79,7 @@ class UltraFastSAM:
             }
         }
         
-        # 性能监控
+        # Performance monitoring
         self.performance_stats = {
             'total_inferences': 0,
             'total_masks_generated': 0,
@@ -87,43 +87,43 @@ class UltraFastSAM:
             'total_time': 0.0
         }
         
-        print("✅ UltraFastSAM引擎初始化完成")
+        print("✅ UltraFastSAM engine initialization complete")
         self.print_parameters()
     
     def print_parameters(self):
-        """打印优化参数"""
-        print("\n📊 UltraFastSAM优化参数:")
-        print("  - 全局推理: 尺寸={}, 置信度={}, IoU={}".format(
+        """Print optimization parameters"""
+        print("\n📊 UltraFastSAM optimization parameters:")
+        print("  - Global inference: size={}, confidence={}, IoU={}".format(
             self.params['global']['imgsz'],
             self.params['global']['conf'],
             self.params['global']['iou']
         ))
-        print("  - 局部推理: 尺寸={}, 置信度={}, IoU={}".format(
+        print("  - Local inference: size={}, confidence={}, IoU={}".format(
             self.params['local']['imgsz'],
             self.params['local']['conf'],
             self.params['local']['iou']
         ))
-        print("  - 掩码过滤: 最小面积={}px, 最小实心度={}".format(
+        print("  - Mask filtering: min_area={}px, min_solidity={}".format(
             self.params['filter']['min_area'],
             self.params['filter']['min_solidity']
         ))
     
     def inference_whole_image(self, image: np.ndarray) -> Tuple[List[np.ndarray], List[float]]:
         """
-        对整个图像进行UltraFastSAM推理（生成候选掩码）
+        Run UltraFastSAM inference on whole image (generate candidate masks)
         
         Args:
-            image: RGB图像 (H, W, 3)
+            image: RGB image (H, W, 3)
             
         Returns:
-            masks: 过滤后的掩码列表
-            scores: 对应的置信度分数
+            masks: filtered list of masks
+            scores: corresponding confidence scores
         """
         start_time = time.time()
         h, w = image.shape[:2]
         
         try:
-            # 运行UltraFastSAM推理（使用优化参数）
+            # Run UltraFastSAM inference (using optimized parameters)
             results = self.model(
                 image,
                 device=self.device,
@@ -137,41 +137,41 @@ class UltraFastSAM:
             self.performance_stats['total_inferences'] += 1
             
             if results[0].masks is None:
-                print("⚠️ 全局推理未检测到任何掩码")
+                print("⚠️ Global inference did not detect any masks")
                 return [], []
             
-            # 获取掩码数据
+            # Get mask data
             masks_data = results[0].masks.data.cpu().numpy()
             scores = results[0].masks.conf.cpu().numpy() if hasattr(results[0].masks, 'conf') else None
             
-            # 处理掩码（使用智能过滤）
+            # Process masks (using smart filtering)
             processed_masks = []
             valid_scores = []
             
             for idx, mask in enumerate(masks_data):
-                # 转换为二值掩码
+                # Convert to binary mask
                 binary_mask = (mask > 0).astype(np.uint8)
                 
-                # 计算掩码属性
+                # Calculate mask properties
                 mask_area = np.sum(binary_mask)
                 img_area = h * w
                 
-                # 过滤掩码（使用智能过滤函数）
+                # Filter mask (using smart filtering function)
                 if self._filter_mask_by_properties(binary_mask, h, w):
-                    # 形态学增强
+                    # Morphological enhancement
                     enhanced_mask = self._enhance_mask_morphology(binary_mask)
                     
-                    # 计算掩码质量分数
+                    # Calculate mask quality score
                     mask_score = self._calculate_mask_quality(enhanced_mask)
                     
-                    # 如果掩码质量太差，尝试修复
+                    # If mask quality is too poor, try to repair
                     if mask_score < 0.3:
                         enhanced_mask = self._repair_mask(enhanced_mask)
                         mask_score = self._calculate_mask_quality(enhanced_mask)
                     
                     processed_masks.append(enhanced_mask * 255)
                     
-                    # 使用质量分数或原始分数
+                    # Use quality score or original score
                     if scores is not None and idx < len(scores):
                         final_score = scores[idx] * 0.7 + mask_score * 0.3
                     else:
@@ -184,36 +184,36 @@ class UltraFastSAM:
             self.performance_stats['total_masks_generated'] += len(masks_data)
             self.performance_stats['total_masks_filtered'] += len(processed_masks)
             
-            print(f"✅ 全局推理生成 {len(processed_masks)}/{len(masks_data)} 个有效掩码，耗时: {inference_time:.2f}s")
+            print(f"✅ Global inference generated {len(processed_masks)}/{len(masks_data)} valid masks, time: {inference_time:.2f}s")
             return processed_masks, valid_scores
             
         except Exception as e:
-            print(f"❌ 全局推理失败: {e}")
+            print(f"❌ Global inference failed: {e}")
             import traceback
             traceback.print_exc()
             return [], []
     
     def _filter_mask_by_properties(self, mask: np.ndarray, img_h: int, img_w: int) -> bool:
         """
-        基于属性智能过滤掩码
+        Smart mask filtering based on properties
         """
-        # 计算掩码属性
+        # Calculate mask properties
         mask_area = np.sum(mask > 0)
         img_area = img_h * img_w
         
-        # 1. 面积过滤
+        # 1. Area filtering
         if mask_area < self.params['filter']['min_area']:
             return False
         
         if mask_area / img_area > self.params['filter']['max_area_ratio']:
             return False
         
-        # 2. 实心度过滤（面积/凸包面积）
+        # 2. Solidity filtering (area / convex hull area)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours:
             return False
         
-        # 取最大轮廓
+        # Take largest contour
         main_contour = max(contours, key=cv2.contourArea)
         area = cv2.contourArea(main_contour)
         
@@ -231,7 +231,7 @@ class UltraFastSAM:
         if solidity < self.params['filter']['min_solidity']:
             return False
         
-        # 3. 范围过滤（掩码面积/边界框面积）
+        # 3. Extent filtering (mask area / bounding box area)
         x, y, w, h = cv2.boundingRect(main_contour)
         bbox_area = w * h
         
@@ -243,7 +243,7 @@ class UltraFastSAM:
         if extent < self.params['filter']['min_extent']:
             return False
         
-        # 4. 形状过滤（排除过于细长的掩码）
+        # 4. Shape filtering (exclude overly elongated masks)
         if h > 0:
             aspect_ratio = w / h
             if aspect_ratio > 5.0 or aspect_ratio < 0.2:
@@ -253,31 +253,31 @@ class UltraFastSAM:
     
     def _enhance_mask_morphology(self, mask: np.ndarray) -> np.ndarray:
         """
-        使用形态学操作增强掩码
+        Enhance mask using morphological operations
         """
-        # 1. 先闭运算填充小孔洞
+        # 1. Close operation to fill small holes
         kernel_close = np.ones(self.params['morphology']['medium_kernel'], np.uint8)
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_close, 
                                iterations=self.params['morphology']['closing_iterations'])
         
-        # 2. 再开运算去除小噪点
+        # 2. Open operation to remove small noise
         kernel_open = np.ones(self.params['morphology']['small_kernel'], np.uint8)
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel_open,
                                iterations=self.params['morphology']['opening_iterations'])
         
-        # 3. 填充孔洞
+        # 3. Fill holes
         mask = ndimage.binary_fill_holes(mask).astype(np.uint8)
         
         return mask
     
     def _calculate_mask_quality(self, mask: np.ndarray) -> float:
         """
-        计算掩码质量分数（0-1）
+        Calculate mask quality score (0-1)
         """
         if mask.sum() == 0:
             return 0.0
         
-        # 1. 紧凑度分数（周长^2 / 面积）
+        # 1. Compactness score (perimeter^2 / area)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours:
             return 0.0
@@ -290,10 +290,10 @@ class UltraFastSAM:
             compactness = 0
         else:
             compactness = (perimeter ** 2) / (4 * np.pi * area)
-            # 归一化：理想圆为1，越大越不紧凑
+            # Normalization: ideal circle is 1, larger is less compact
             compactness_score = 1.0 / min(compactness, 10.0)
         
-        # 2. 实心度分数
+        # 2. Solidity score
         hull = cv2.convexHull(main_contour)
         hull_area = cv2.contourArea(hull)
         
@@ -303,40 +303,40 @@ class UltraFastSAM:
             solidity = area / hull_area
             solidity_score = solidity
         
-        # 3. 边界平滑度分数
+        # 3. Boundary smoothness score
         epsilon = 0.01 * perimeter
         approx = cv2.approxPolyDP(main_contour, epsilon, True)
         smoothness = len(approx) / max(perimeter, 1)
         smoothness_score = min(smoothness * 10, 1.0)
         
-        # 综合分数
+        # Combined score
         total_score = compactness_score * 0.4 + solidity_score * 0.4 + smoothness_score * 0.2
         return float(total_score)
     
     def _repair_mask(self, mask: np.ndarray) -> np.ndarray:
         """
-        修复低质量掩码
+        Repair low-quality mask
         """
-        # 1. 计算掩码属性
+        # 1. Calculate mask properties
         area = mask.sum()
         h, w = mask.shape
         
-        # 2. 如果是小掩码，使用膨胀增强
+        # 2. If small mask, use dilation to enhance
         if area < 100:
             kernel = np.ones((3, 3), np.uint8)
             mask = cv2.dilate(mask, kernel, iterations=1)
         
-        # 3. 如果是大掩码但形状不好，使用腐蚀去除毛刺
+        # 3. If large mask but poor shape, use erosion to remove burrs
         elif area > 1000:
             kernel = np.ones((3, 3), np.uint8)
             mask = cv2.erode(mask, kernel, iterations=1)
             mask = cv2.dilate(mask, kernel, iterations=1)
         
-        # 4. 确保掩码是连通的
+        # 4. Ensure mask is connected
         num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
         
         if num_labels > 1:
-            # 保留最大连通域
+            # Keep largest connected component
             largest_label = 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA])
             mask = (labels == largest_label).astype(np.uint8)
         
@@ -344,46 +344,46 @@ class UltraFastSAM:
     
     def segment_single_box(self, image: np.ndarray, box: List[float]) -> Tuple[np.ndarray, float]:
         """
-        对单个框进行精细分割
+        Fine segmentation for single box
         
         Args:
-            image: 原始图像
+            image: original image
             box: [x1, y1, x2, y2]
             
         Returns:
-            mask: 分割掩码
-            score: 质量分数
+            mask: segmentation mask
+            score: quality score
         """
         x1, y1, x2, y2 = map(int, box)
         h, w = image.shape[:2]
         
-        # 确保边界框在图像范围内
+        # Ensure bounding box is within image bounds
         x1, y1 = max(0, x1), max(0, y1)
         x2, y2 = min(w, x2), min(h, y2)
         
         if x2 <= x1 or y2 <= y1:
             return np.zeros((h, w), dtype=np.uint8), 0.0
         
-        # 裁剪区域
+        # Crop region
         crop = image[y1:y2, x1:x2]
         if crop.size == 0:
             return np.zeros((h, w), dtype=np.uint8), 0.0
         
         try:
-            # 根据框大小选择参数
+            # Select parameters based on box size
             crop_h, crop_w = crop.shape[:2]
             box_area = crop_h * crop_w
             img_area = h * w
             
-            # 智能参数选择
-            if box_area < 1000:  # 小框
+            # Smart parameter selection
+            if box_area < 1000:  # Small box
                 params = self.params['small']
-            elif box_area < 10000:  # 中等框
+            elif box_area < 10000:  # Medium box
                 params = self.params['local']
-            else:  # 大框
+            else:  # Large box
                 params = self.params['global']
             
-            # 运行FastSAM推理
+            # Run FastSAM inference
             results = self.model(
                 crop,
                 device=self.device,
@@ -398,23 +398,23 @@ class UltraFastSAM:
             if results[0].masks is None:
                 return np.zeros((h, w), dtype=np.uint8), 0.0
             
-            # 获取所有掩码
+            # Get all masks
             masks_data = results[0].masks.data.cpu().numpy()
             
             if len(masks_data) == 0:
                 return np.zeros((h, w), dtype=np.uint8), 0.0
             
-            # 选择最佳掩码
+            # Select best mask
             best_mask = None
             best_score = -1
             
             for mask in masks_data:
                 binary_mask = (mask > 0).astype(np.uint8)
                 
-                # 增强掩码
+                # Enhance mask
                 enhanced_mask = self._enhance_mask_morphology(binary_mask)
                 
-                # 计算质量分数
+                # Calculate quality score
                 mask_score = self._calculate_mask_quality(enhanced_mask)
                 
                 if mask_score > best_score:
@@ -422,12 +422,12 @@ class UltraFastSAM:
                     best_mask = enhanced_mask
             
             if best_mask is not None and best_score > 0.1:
-                # 创建完整图像掩码
+                # Create full image mask
                 full_mask = np.zeros((h, w), dtype=np.uint8)
                 mask_h, mask_w = best_mask.shape
                 
                 if mask_h > 0 and mask_w > 0:
-                    # 确保掩码在裁剪区域内
+                    # Ensure mask is within crop region
                     actual_h = min(mask_h, y2 - y1)
                     actual_w = min(mask_w, x2 - x1)
                     
@@ -436,7 +436,7 @@ class UltraFastSAM:
                 return full_mask * 255, best_score
             
         except Exception as e:
-            print(f"⚠️ 单框分割失败: {e}")
+            print(f"⚠️ Single box segmentation failed: {e}")
         
         return np.zeros((h, w), dtype=np.uint8), 0.0
     
@@ -446,9 +446,9 @@ class UltraFastSAM:
                            mask_scores: List[float],
                            image_shape: Tuple[int, int]) -> List[Optional[np.ndarray]]:
         """
-        智能掩码匹配算法（改进版）
+        Intelligent mask matching algorithm (improved)
         
-        使用多对多匹配 + 质量优先 + 重叠惩罚
+        Uses many-to-many matching + quality priority + overlap penalty
         """
         if len(fastsam_masks) == 0:
             return [None] * len(yolo_boxes)
@@ -457,9 +457,9 @@ class UltraFastSAM:
         n_boxes = len(yolo_boxes)
         n_masks = len(fastsam_masks)
         
-        print(f"📊 智能匹配: {n_boxes}个框 vs {n_masks}个掩码")
+        print(f"📊 Intelligent matching: {n_boxes} boxes vs {n_masks} masks")
         
-        # 1. 计算成本矩阵（成本越低越好）
+        # 1. Calculate cost matrix (lower is better)
         cost_matrix = np.zeros((n_boxes, n_masks))
         
         for i, box in enumerate(yolo_boxes):
@@ -467,17 +467,17 @@ class UltraFastSAM:
             box_area = max((x2 - x1) * (y2 - y1), 1)
             
             for j, mask in enumerate(fastsam_masks):
-                # 计算掩码在框内的部分
+                # Calculate mask portion inside box
                 mask_in_box = mask[y1:y2, x1:x2]
                 intersection = np.sum(mask_in_box > 0)
                 
                 if intersection == 0:
-                    cost = 10.0  # 高成本
+                    cost = 10.0  # High cost
                 else:
-                    # 计算覆盖率
+                    # Calculate coverage
                     coverage = intersection / box_area
                     
-                    # 计算中心偏移
+                    # Calculate center offset
                     mask_indices = np.where(mask > 0)
                     if len(mask_indices[0]) > 0:
                         mask_center_y = np.mean(mask_indices[0])
@@ -494,26 +494,26 @@ class UltraFastSAM:
                     # 归一化距离
                     norm_distance = center_distance / np.sqrt(h**2 + w**2)
                     
-                    # 成本 = 低覆盖率 + 高距离 + 低质量
+                    # Cost = low coverage + high distance + low quality
                     cost = (1.0 - coverage) * 0.5 + norm_distance * 0.3 + (1.0 - mask_scores[j]) * 0.2
                 
                 cost_matrix[i, j] = cost
         
-        # 2. 使用匈牙利算法进行最优分配
+        # 2. Use Hungarian algorithm for optimal assignment
         assigned_masks = [None] * n_boxes
         mask_used = [False] * n_masks
         
         if n_boxes > 0 and n_masks > 0:
-            # 匈牙利算法找到最小成本分配
+            # Hungarian algorithm finds minimum cost assignment
             row_ind, col_ind = linear_sum_assignment(cost_matrix)
             
-            # 应用分配（成本阈值）
+            # Apply assignment (cost threshold)
             for i, j in zip(row_ind, col_ind):
                 if i < n_boxes and j < n_masks and cost_matrix[i, j] < 0.7:  # 成本阈值
                     assigned_masks[i] = fastsam_masks[j]
                     mask_used[j] = True
             
-            # 3. 二次分配：为未分配的框寻找次优掩码
+            # 3. Secondary assignment: find suboptimal masks for unassigned boxes
             for i in range(n_boxes):
                 if assigned_masks[i] is None:
                     # 按成本排序
@@ -525,14 +525,14 @@ class UltraFastSAM:
                             mask_used[j] = True
                             break
             
-            # 4. 统计分配结果
+            # 4. Count assignment results
             assigned_count = sum(1 for mask in assigned_masks if mask is not None)
-            print(f"✅ 智能匹配完成: {assigned_count}/{n_boxes} 个框获得掩码")
+            print(f"✅ Intelligent matching complete: {assigned_count}/{n_boxes} boxes got masks")
             
         return assigned_masks
     
     def get_performance_stats(self) -> Dict[str, Any]:
-        """获取性能统计"""
+        """Get performance statistics"""
         stats = self.performance_stats.copy()
         
         if stats['total_inferences'] > 0:
@@ -543,7 +543,7 @@ class UltraFastSAM:
         return stats
     
     def reset_stats(self):
-        """重置性能统计"""
+        """Reset performance statistics"""
         self.performance_stats = {
             'total_inferences': 0,
             'total_masks_generated': 0,
@@ -553,9 +553,9 @@ class UltraFastSAM:
 
 
 if __name__ == "__main__":
-    print("UltraFastSAM引擎测试")
+    print("UltraFastSAM Engine Test")
     print("=" * 60)
     
-    # 测试代码
+    # Test code
     engine = UltraFastSAM(device="cpu")
-    print("✅ 引擎测试通过")
+    print("✅ Engine test passed")

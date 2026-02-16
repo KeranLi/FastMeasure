@@ -2,7 +2,14 @@
 Core Module - Provides shared tools and functionality for FastSAM and MobileSAM
 """
 
-from .seg_tools import ImageProcessor, PolygonUtils, FileUtils, PerformanceMonitor
+from .seg_tools import (
+    ImageProcessor, 
+    PolygonUtils, 
+    FileUtils, 
+    PerformanceMonitor,
+    get_terminal_width,
+    print_separator
+)
 from .seg_optimize import SmartPostProcessor
 from .cli_base import (
     SimpleArgs,

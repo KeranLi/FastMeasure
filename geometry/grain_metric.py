@@ -6,30 +6,30 @@ from scipy.spatial import ConvexHull
 
 class GrainShapeMetrics:
     """
-    颗粒轮廓计算工具类，计算各种颗粒形状的结构参数
+    Grain contour calculation tool class, computing various grain shape structural parameters
     """
     
     def __init__(self, grain_data: pd.DataFrame):
         """
-        初始化方法
+        Initialization method
         
         Args:
-            grain_data (pd.DataFrame): 包含颗粒区域数据的DataFrame，必须包含 'area', 'perimeter', 'coordinates' 等列
+            grain_data (pd.DataFrame): DataFrame containing grain region data, must include 'area', 'perimeter', 'coordinates' columns
         """
         self.grain_data = grain_data
 
 
     def calculate_2d_zingg_parameters(self) -> pd.DataFrame:
         """
-        在 2D 场景下，L=主轴长, S=I=副轴长
+        In 2D scenario, L=major axis length, S=I=minor axis length
         """
         l = self.grain_data['major_axis_length']
         s = self.grain_data['minor_axis_length']
         
-        # 2D 适配版
-        ei = s / l  # 2D 伸长率
-        fi = 1.0    # 2D 无法体现扁平化，设为常数或忽略
-        ar = s / l  # 2D 长宽比
+        # 2D adapted version
+        ei = s / l  # 2D elongation
+        fi = 1.0    # 2D cannot represent flatness, set to constant or ignore
+        ar = s / l  # 2D aspect ratio
         
         return pd.DataFrame({
             'EI_2d': ei,
@@ -39,84 +39,84 @@ class GrainShapeMetrics:
 
     def calculate_fourier_descriptors(self, n_coeffs=25) -> pd.DataFrame:
         """
-        2D 轮廓的傅里叶描述符（对应 3D 的球谐函数）
-        用于描述从整体到细节的形状特征
+        Fourier descriptors for 2D contour (corresponding to 3D spherical harmonics)
+        Used to describe shape features from global to detail
         """
         results = []
         for _, grain in self.grain_data.iterrows():
             coords = np.array(grain['coordinates'])
             
-            # 1. 将坐标转换为复数形式 x + iy
+            # 1. Convert coordinates to complex form x + iy
             complex_coords = coords[:, 0] + 1j * coords[:, 1]
             
-            # 2. 离散傅里叶变换
+            # 2. Discrete Fourier Transform
             coeffs = np.fft.fft(complex_coords)
             
-            # 3. 归一化（消除平移、旋转、缩放影响）
-            # coeffs[0] 是直流分量（中心位置），忽略
-            # 用 coeffs[1] 归一化以实现尺度不变性
+            # 3. Normalization (eliminate translation, rotation, scale effects)
+            # coeffs[0] is DC component (center position), ignore
+            # Normalize by coeffs[1] for scale invariance
             abs_coeffs = np.abs(coeffs)
             if abs_coeffs[1] != 0:
                 normalized_coeffs = abs_coeffs / abs_coeffs[1]
             else:
                 normalized_coeffs = np.zeros(len(abs_coeffs))
 
-            # 4. 提取类似 Dn 的特征 (取前 n_coeffs 个)
-            # D2 对应 normalized_coeffs[2], 依次类推
+            # 4. Extract Dn-like features (take first n_coeffs)
+            # D2 corresponds to normalized_coeffs[2], and so on
             d_vals = []
             for i in range(2, min(n_coeffs + 2, len(normalized_coeffs))):
                 d_vals.append(normalized_coeffs[i])
             
-            # 如果系数不够，补齐
+            # If coefficients not enough, pad with zeros
             while len(d_vals) < 3: 
                 d_vals.append(0)
                 
-            results.append(d_vals[:3]) # 仅取 D2, D3, D4 演示
+            results.append(d_vals[:3]) # Only take D2, D3, D4 for demonstration
 
         return pd.DataFrame(results, columns=['D2_2d', 'D3_2d', 'D4_2d'])
 
     def calculate_sh_equivalent_fd(self, beta):
         """
         FD = (6 + beta) / 2
-        beta 通常通过 log(Fourier_Coeff) vs log(n) 的斜率获得
+        beta is usually obtained from the slope of log(Fourier_Coeff) vs log(n)
         """
         return (6 + beta) / 2
 
     def calculate_convexity(self) -> pd.Series:
         """
-        计算颗粒的凸度 (Convexity)
+        Calculate grain convexity
         
-        公式: C = A / A_hull
-        其中 A 是颗粒面积，A_hull 是颗粒二维投影轮廓凸包的面积。
+        Formula: C = A / A_hull
+        Where A is grain area, A_hull is the area of convex hull of grain 2D projection contour.
         """
-        # 如果 grain_data 是通过 skimage.measure.regionprops 获得的，
-        # 通常已经包含了 'solidity' 属性，它等同于此处的凸度。
+        # If grain_data is obtained via skimage.measure.regionprops,
+        # it usually already contains 'solidity' attribute, which equals convexity here.
         if 'solidity' in self.grain_data.columns:
             return self.grain_data['solidity']
         
-        # 如果没有预计算好的 solidity，则通过坐标手动计算
+        # If pre-calculated solidity not available, calculate manually via coordinates
         convexity_list = []
         for _, grain in self.grain_data.iterrows():
             coords = np.array(grain['coordinates'])
             area = grain['area']
             
-            # 使用 scipy.spatial.ConvexHull 计算凸包
+            # Use scipy.spatial.ConvexHull to calculate convex hull
             try:
                 hull = ConvexHull(coords)
-                # hull.volume 在 2D 中代表面积 (Area)
+                # hull.volume represents area in 2D
                 a_hull = hull.volume 
                 convexity_list.append(area / a_hull)
             except Exception:
-                # 针对坐标点不足以构成凸包的情况处理
+                # Handle cases where coordinates are insufficient to form convex hull
                 convexity_list.append(np.nan)
                 
         return pd.Series(convexity_list)
         
     def calculate_circularity(self) -> pd.Series:
         """
-        计算颗粒的圆形度
+        Calculate grain circularity
         
-        公式: Circularity = 4 * π * Area / Perimeter^2
+        Formula: Circularity = 4 * π * Area / Perimeter^2
         """
         area = self.grain_data['area']
         perimeter = self.grain_data['perimeter']
@@ -124,9 +124,9 @@ class GrainShapeMetrics:
     
     def calculate_aspect_ratio(self) -> pd.Series:
         """
-        计算颗粒的长宽比
+        Calculate grain aspect ratio
         
-        公式: Aspect Ratio = Major Axis Length / Minor Axis Length
+        Formula: Aspect Ratio = Major Axis Length / Minor Axis Length
         """
         major_axis_length = self.grain_data['major_axis_length']
         minor_axis_length = self.grain_data['minor_axis_length']
@@ -134,9 +134,9 @@ class GrainShapeMetrics:
     
     def calculate_rectangularity(self) -> pd.Series:
         """
-        计算颗粒的矩形度
+        Calculate grain rectangularity
         
-        公式: Rectangularity = Area / (Major Axis Length * Minor Axis Length)
+        Formula: Rectangularity = Area / (Major Axis Length * Minor Axis Length)
         """
         area = self.grain_data['area']
         major_axis_length = self.grain_data['major_axis_length']
@@ -145,9 +145,9 @@ class GrainShapeMetrics:
     
     def calculate_compactness(self) -> pd.Series:
         """
-        计算颗粒的压实度
+        Calculate grain compactness
         
-        公式: Compactness = Perimeter^2 / (4 * π * Area)
+        Formula: Compactness = Perimeter^2 / (4 * π * Area)
         """
         perimeter = self.grain_data['perimeter']
         area = self.grain_data['area']
@@ -155,12 +155,12 @@ class GrainShapeMetrics:
     
     def calculate_fractal_dimension(self) -> pd.Series:
         """
-        计算颗粒的分形维数
+        Calculate grain fractal dimension
         
-        使用盒子计数法计算分形维数
+        Calculate fractal dimension using box counting method
         """
         def box_counting(coords):
-            """计算盒子计数法的分形维数"""
+            """Calculate fractal dimension using box counting method"""
             coords = np.array(coords)
             min_coords = coords.min(axis=0)
             max_coords = coords.max(axis=0)
@@ -177,22 +177,22 @@ class GrainShapeMetrics:
         
     def calculate_angularity(self) -> pd.Series:
         """
-        计算颗粒的棱角度
+        Calculate grain angularity
         
-        通过计算颗粒轮廓的锐角程度来估算
+        Estimate by calculating the sharpness of grain contour
         """
         angularity = []
         for _, grain in self.grain_data.iterrows():
             coords = grain['coordinates']
             hull = ConvexHull(coords)
-            angularity.append(len(hull.vertices))  # 计算边界的角点数作为棱角度的简单估计
+            angularity.append(len(hull.vertices))  # Count boundary corner points as simple estimate of angularity
         return pd.Series(angularity)
     
     def calculate_roundness(self) -> pd.Series:
         """
-        计算颗粒的磨圆度
+        Calculate grain roundness
         
-        公式: Roundness = Perimeter^2 / (4 * π * Area)
+        Formula: Roundness = Perimeter^2 / (4 * π * Area)
         """
         perimeter = self.grain_data['perimeter']
         area = self.grain_data['area']
@@ -200,7 +200,7 @@ class GrainShapeMetrics:
     
     def compute_all_metrics(self):
         """
-        计算所有颗粒的形状参数
+        Calculate all grain shape parameters
         """
         self.grain_data['circularity'] = self.calculate_circularity()
         self.grain_data['aspect_ratio'] = self.calculate_aspect_ratio()

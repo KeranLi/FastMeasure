@@ -1,7 +1,7 @@
 """
-MobileSAM引擎针对岩石颗粒优化
-文件名：mobile_sam_engine.py
-功能：MobileSAM引擎，专为岩石颗粒分割设计，解决MobileSAM在岩石颗粒上的问题
+MobileSAM Engine Optimized for Rock Grains
+Filename: mobile_sam_engine.py
+Function: MobileSAM engine designed for rock grain segmentation, solving issues with MobileSAM on rock grains
 """
 
 import numpy as np
@@ -14,15 +14,15 @@ from typing import List, Tuple, Dict, Optional, Any
 import warnings
 warnings.filterwarnings('ignore')
 
-# MobileSAM导入
+# MobileSAM import
 try:
     from mobile_sam import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
     MOBILESAM_AVAILABLE = True
 except ImportError:
     MOBILESAM_AVAILABLE = False
-    print(" MobileSAM库未安装，请执行：pip install git+https://github.com/ChaoningZhang/MobileSAM.git")
+    print(" MobileSAM library not installed, please run: pip install git+https://github.com/ChaoningZhang/MobileSAM.git")
 
-# Segment Anything导入（作为备选）
+# Segment Anything import (as fallback)
 try:
     from segment_anything import sam_model_registry as sam_registry, SamPredictor
     SAM_AVAILABLE = True
@@ -31,47 +31,47 @@ except ImportError:
 
 
 class MobileSAMEngine:
-    """MobileSAM引擎，为岩石颗粒分割设计"""
+    """MobileSAM engine designed for rock grain segmentation"""
     
     def __init__(self, model_path: str = "models/mobile_sam.pt", 
                  device: str = "cuda", model_type: str = "vit_t"):
         """
-        初始化MobileSAM
+        Initialize MobileSAM
         
         Args:
-            model_path: MobileSAM模型路径
-            device: 运行设备 ('cpu' 或 'cuda')
-            model_type: 模型类型 ('vit_t' for MobileSAM)
+            model_path: MobileSAM model path
+            device: Device to run on ('cpu' or 'cuda')
+            model_type: Model type ('vit_t' for MobileSAM)
         """
         print("=" * 60)
-        print("初始化MobileSAM终极引擎")
+        print("Initializing MobileSAM Ultimate Engine")
         print("=" * 60)
         
         self.device = device
         self.model_type = model_type
         
-        # 检查MobileSAM可用性
+        # Check MobileSAM availability
         if not MOBILESAM_AVAILABLE:
             raise ImportError(
-                "MobileSAM库未安装！请执行：\n"
+                "MobileSAM library not installed! Please run:\n"
                 "pip install git+https://github.com/ChaoningZhang/MobileSAM.git"
             )
         
-        # 自动适配设备（如果CUDA不可用，自动切CPU）
+        # Auto-detect device (fallback to CPU if CUDA unavailable)
         if self.device == "cuda" and not torch.cuda.is_available():
-            print(" CUDA不可用，自动切换到CPU")
+            print(" CUDA unavailable, automatically switching to CPU")
             self.device = "cpu"
         
-        # 加载模型
+        # Load model
         try:
-            print(f"加载MobileSAM模型: {model_path}")
+            print(f"Loading MobileSAM model: {model_path}")
             self.sam = sam_model_registry[model_type](checkpoint=model_path)
             self.sam.to(device=self.device)
             
-            # 创建预测器
+            # Create predictor
             self.predictor = SamPredictor(self.sam)
             
-            # 创建自动掩码生成器（用于自动分割）
+            # Create automatic mask generator (for auto segmentation)
             self.mask_generator = SamAutomaticMaskGenerator(
                 model=self.sam,
                 points_per_side=32,
@@ -83,15 +83,15 @@ class MobileSAMEngine:
                 min_mask_region_area=10,
             )
             
-            print(f" MobileSAM模型加载成功 (设备: {self.device})")
+            print(f" MobileSAM model loaded successfully (device: {self.device})")
         except FileNotFoundError:
-            raise FileNotFoundError(f"模型文件不存在: {model_path}\n请检查模型路径是否正确")
+            raise FileNotFoundError(f"Model file not found: {model_path}\nPlease check if the model path is correct")
         except Exception as e:
-            raise RuntimeError(f"模型加载失败: {str(e)}")
+            raise RuntimeError(f"Model loading failed: {str(e)}")
         
-        # === MobileSAM优化参数（针对岩石颗粒）===
+        # === MobileSAM optimization parameters (for rock grains) ===
         self.params = {
-            # 自动掩码生成参数
+            # Auto mask generation parameters
             'auto_mask': {
                 'points_per_side': 32,
                 'pred_iou_thresh': 0.88,
@@ -100,17 +100,17 @@ class MobileSAMEngine:
                 'crop_n_layers': 0,
                 'min_mask_region_area': 10,
             },
-            # 框提示参数
+            # Box prompt parameters
             'box_prompt': {
-                'box_expansion': 1.15,      # 框扩展系数
-                'multimask_output': False,  # 单掩码输出
+                'box_expansion': 1.15,      # Box expansion factor
+                'multimask_output': False,  # Single mask output
             },
-            # 点提示参数
+            # Point prompt parameters
             'point_prompt': {
-                'multimask_output': True,   # 多掩码输出
-                'mask_threshold': 0.0,      # 掩码阈值
+                'multimask_output': True,   # Multi-mask output
+                'mask_threshold': 0.0,      # Mask threshold
             },
-            # 掩码过滤参数
+            # Mask filtering parameters
             'filter': {
                 'min_area': 10,
                 'max_area_ratio': 0.8,
@@ -118,7 +118,7 @@ class MobileSAMEngine:
                 'min_extent': 0.1,
                 'min_confidence': 0.3,
             },
-            # 形态学参数
+            # Morphological parameters
             'morphology': {
                 'small_kernel': (3, 3),
                 'medium_kernel': (5, 5),
@@ -127,7 +127,7 @@ class MobileSAMEngine:
                 'opening_iterations': 1,
                 'dilation_iterations': 1,
             },
-            # 多尺度推理
+            # Multi-scale inference
             'multi_scale': {
                 'enabled': True,
                 'scales': [0.8, 1.0, 1.2],
@@ -135,7 +135,7 @@ class MobileSAMEngine:
             }
         }
         
-        # 性能监控
+        # Performance monitoring
         self.performance_stats = {
             'total_inferences': 0,
             'total_masks_generated': 0,
@@ -146,52 +146,52 @@ class MobileSAMEngine:
             'auto_masks': 0,
         }
         
-        print(" MobileSAM引擎初始化完成")
+        print(" MobileSAM engine initialization complete")
         self.print_parameters()
     
     def print_parameters(self):
-        """打印优化参数"""
-        print("\n MobileSAM优化参数:")
-        print("  - 自动掩码生成: points_per_side={}, iou_thresh={}".format(
+        """Print optimization parameters"""
+        print("\n MobileSAM optimization parameters:")
+        print("  - Auto mask generation: points_per_side={}, iou_thresh={}".format(
             self.params['auto_mask']['points_per_side'],
             self.params['auto_mask']['pred_iou_thresh']
         ))
-        print("  - 框提示: box_expansion={}, multimask={}".format(
+        print("  - Box prompt: box_expansion={}, multimask={}".format(
             self.params['box_prompt']['box_expansion'],
             self.params['box_prompt']['multimask_output']
         ))
-        print("  - 掩码过滤: 最小面积={}px, 最小置信度={}".format(
+        print("  - Mask filtering: min_area={}px, min_confidence={}".format(
             self.params['filter']['min_area'],
             self.params['filter']['min_confidence']
         ))
-        print("  - 多尺度推理: {}".format(
-            "启用" if self.params['multi_scale']['enabled'] else "禁用"
+        print("  - Multi-scale inference: {}".format(
+            "enabled" if self.params['multi_scale']['enabled'] else "disabled"
         ))
     
     def set_image(self, image: np.ndarray):
-        """设置当前图像（必须先调用）"""
+        """Set current image (must be called first)"""
         self.predictor.set_image(image)
         self.current_image = image
         self.image_shape = image.shape[:2]
     
     def segment_with_box(self, box: List[float]) -> Tuple[np.ndarray, float]:
         """
-        使用边界框进行分割（主要方法）
+        Segment using bounding box (main method)
         
         Args:
-            box: [x1, y1, x2, y2] 边界框
+            box: [x1, y1, x2, y2] bounding box
             
         Returns:
-            mask: 分割掩码 (0/1)
-            score: 置信度分数
+            mask: segmentation mask (0/1)
+            score: confidence score
         """
         start_time = time.time()
         
         try:
-            # 扩展边界框
+            # Expand bounding box
             expanded_box = self._expand_box(box, self.params['box_prompt']['box_expansion'])
             
-            # 确保框在图像范围内
+            # Ensure box is within image bounds
             h, w = self.image_shape
             x1, y1, x2, y2 = expanded_box
             x1, y1 = max(0, x1), max(0, y1)
@@ -200,10 +200,10 @@ class MobileSAMEngine:
             if x2 <= x1 or y2 <= y1:
                 return np.zeros(self.image_shape, dtype=np.uint8), 0.0
             
-            # 转换为numpy数组
+            # Convert to numpy array
             input_box = np.array([x1, y1, x2, y2])
             
-            # 预测掩码
+            # Predict mask
             masks, scores, _ = self.predictor.predict(
                 point_coords=None,
                 point_labels=None,
@@ -217,26 +217,26 @@ class MobileSAMEngine:
             if len(masks) == 0:
                 return np.zeros(self.image_shape, dtype=np.uint8), 0.0
             
-            # 选择最佳掩码
+            # Select best mask
             if self.params['box_prompt']['multimask_output']:
                 best_idx = np.argmax(scores)
                 mask = masks[best_idx]
                 score = float(scores[best_idx])
             else:
                 mask = masks[0]
-                score = 0.8  # 如果没有分数，使用默认值
+                score = 0.8  # Use default value if no score available
             
-            # 转换为二值掩码
+            # Convert to binary mask
             binary_mask = (mask > 0).astype(np.uint8)
             
-            # 过滤掩码
+            # Filter mask
             if not self._filter_mask_by_properties(binary_mask):
                 return np.zeros(self.image_shape, dtype=np.uint8), 0.0
             
-            # 形态学增强
+            # Morphological enhancement
             enhanced_mask = self._enhance_mask_morphology(binary_mask)
             
-            # 计算掩码质量
+            # Calculate mask quality
             mask_quality = self._calculate_mask_quality(enhanced_mask)
             final_score = score * 0.7 + mask_quality * 0.3
             
@@ -251,26 +251,26 @@ class MobileSAMEngine:
                 return np.zeros(self.image_shape, dtype=np.uint8), 0.0
             
         except Exception as e:
-            print(f" 框分割失败: {e}")
+            print(f" Box segmentation failed: {e}")
             return np.zeros(self.image_shape, dtype=np.uint8), 0.0
     
     def segment_with_box_and_point(self, box: List[float], point: Tuple[float, float]) -> Tuple[np.ndarray, float]:
         """
-        使用边界框+中心点进行分割（更稳定）
+        Segment using bounding box + center point (more stable)
         
         Args:
-            box: [x1, y1, x2, y2] 边界框
-            point: (x, y) 中心点
+            box: [x1, y1, x2, y2] bounding box
+            point: (x, y) center point
             
         Returns:
-            mask: 分割掩码
-            score: 置信度分数
+            mask: segmentation mask
+            score: confidence score
         """
         try:
-            # 扩展边界框
+            # Expand bounding box
             expanded_box = self._expand_box(box, self.params['box_prompt']['box_expansion'])
             
-            # 确保框和点在图像范围内
+            # Ensure box and point are within image bounds
             h, w = self.image_shape
             x1, y1, x2, y2 = expanded_box
             x1, y1 = max(0, x1), max(0, y1)
@@ -282,12 +282,12 @@ class MobileSAMEngine:
             if x2 <= x1 or y2 <= y1:
                 return np.zeros(self.image_shape, dtype=np.uint8), 0.0
             
-            # 准备输入
+            # Prepare inputs
             input_box = np.array([x1, y1, x2, y2])
             input_point = np.array([[px, py]])
-            input_label = np.array([1])  # 前景点
+            input_label = np.array([1])  # Foreground point
             
-            # 预测掩码
+            # Predict mask
             masks, scores, _ = self.predictor.predict(
                 point_coords=input_point,
                 point_labels=input_label,
@@ -302,22 +302,22 @@ class MobileSAMEngine:
             if len(masks) == 0:
                 return np.zeros(self.image_shape, dtype=np.uint8), 0.0
             
-            # 选择最佳掩码
+            # Select best mask
             best_idx = np.argmax(scores)
             mask = masks[best_idx]
             score = float(scores[best_idx])
             
-            # 转换为二值掩码
+            # Convert to binary mask
             binary_mask = (mask > 0).astype(np.uint8)
             
-            # 过滤掩码
+            # Filter mask
             if not self._filter_mask_by_properties(binary_mask):
                 return np.zeros(self.image_shape, dtype=np.uint8), 0.0
             
-            # 形态学增强
+            # Morphological enhancement
             enhanced_mask = self._enhance_mask_morphology(binary_mask)
             
-            # 计算掩码质量
+            # Calculate mask quality
             mask_quality = self._calculate_mask_quality(enhanced_mask)
             final_score = score * 0.7 + mask_quality * 0.3
             
@@ -330,24 +330,24 @@ class MobileSAMEngine:
                 return np.zeros(self.image_shape, dtype=np.uint8), 0.0
             
         except Exception as e:
-            print(f" 框+点分割失败: {e}")
+            print(f" Box+point segmentation failed: {e}")
             return np.zeros(self.image_shape, dtype=np.uint8), 0.0
     
     def generate_auto_masks(self, image: np.ndarray) -> Tuple[List[np.ndarray], List[float]]:
         """
-        自动生成掩码（无需提示）
+        Generate masks automatically (no prompts needed)
         
         Args:
-            image: 输入图像
+            image: input image
             
         Returns:
-            masks: 掩码列表
-            scores: 分数列表
+            masks: list of masks
+            scores: list of scores
         """
         start_time = time.time()
         
         try:
-            # 生成自动掩码
+            # Generate automatic masks
             anns = self.mask_generator.generate(image)
             
             self.performance_stats['auto_masks'] += 1
@@ -360,15 +360,15 @@ class MobileSAMEngine:
                 mask = ann['segmentation']
                 score = ann.get('predicted_iou', 0.5) * ann.get('stability_score', 0.5)
                 
-                # 转换为二值掩码
+                # Convert to binary mask
                 binary_mask = mask.astype(np.uint8)
                 
-                # 过滤掩码
+                # Filter mask
                 if self._filter_mask_by_properties(binary_mask):
-                    # 形态学增强
+                    # Morphological enhancement
                     enhanced_mask = self._enhance_mask_morphology(binary_mask)
                     
-                    # 计算掩码质量
+                    # Calculate mask quality
                     mask_quality = self._calculate_mask_quality(enhanced_mask)
                     final_score = score * 0.7 + mask_quality * 0.3
                     
@@ -381,47 +381,47 @@ class MobileSAMEngine:
             self.performance_stats['total_masks_generated'] += len(masks)
             self.performance_stats['total_masks_filtered'] += len(masks)
             
-            print(f" 自动掩码生成: {len(masks)}个有效掩码，耗时: {inference_time:.2f}s")
+            print(f" Auto mask generation: {len(masks)} valid masks, time: {inference_time:.2f}s")
             return masks, scores
             
         except Exception as e:
-            print(f" 自动掩码生成失败: {e}")
+            print(f" Auto mask generation failed: {e}")
             return [], []
     
     def _expand_box(self, box: List[float], expansion: float) -> List[float]:
-        """扩展边界框"""
+        """Expand bounding box"""
         x1, y1, x2, y2 = box
         width = x2 - x1
         height = y2 - y1
         
-        # 计算扩展量
+        # Calculate expansion amount
         dx = width * (expansion - 1) / 2
         dy = height * (expansion - 1) / 2
         
         return [x1 - dx, y1 - dy, x2 + dx, y2 + dy]
     
     def _filter_mask_by_properties(self, mask: np.ndarray) -> bool:
-        """基于属性智能过滤掩码"""
+        """Smart mask filtering based on properties"""
         if mask.sum() == 0:
             return False
         
-        # 计算掩码属性
+        # Calculate mask properties
         mask_area = mask.sum()
         img_area = mask.shape[0] * mask.shape[1]
         
-        # 1. 面积过滤
+        # 1. Area filtering
         if mask_area < self.params['filter']['min_area']:
             return False
         
         if mask_area / img_area > self.params['filter']['max_area_ratio']:
             return False
         
-        # 2. 实心度过滤（面积/凸包面积）
+        # 2. Solidity filtering (area / convex hull area)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours:
             return False
         
-        # 取最大轮廓
+        # Take largest contour
         main_contour = max(contours, key=cv2.contourArea)
         area = cv2.contourArea(main_contour)
         
@@ -439,7 +439,7 @@ class MobileSAMEngine:
         if solidity < self.params['filter']['min_solidity']:
             return False
         
-        # 3. 范围过滤（掩码面积/边界框面积）
+        # 3. Extent filtering (mask area / bounding box area)
         x, y, w, h = cv2.boundingRect(main_contour)
         bbox_area = w * h
         
@@ -451,7 +451,7 @@ class MobileSAMEngine:
         if extent < self.params['filter']['min_extent']:
             return False
         
-        # 4. 形状过滤（排除过于细长的掩码）
+        # 4. Shape filtering (exclude overly elongated masks)
         if h > 0:
             aspect_ratio = w / h
             if aspect_ratio > 5.0 or aspect_ratio < 0.2:
@@ -460,33 +460,33 @@ class MobileSAMEngine:
         return True
     
     def _enhance_mask_morphology(self, mask: np.ndarray) -> np.ndarray:
-        """使用形态学操作增强掩码"""
-        # 1. 先闭运算填充小孔洞
+        """Enhance mask using morphological operations"""
+        # 1. Close operation to fill small holes
         kernel_close = np.ones(self.params['morphology']['medium_kernel'], np.uint8)
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_close, 
                                iterations=self.params['morphology']['closing_iterations'])
         
-        # 2. 再开运算去除小噪点
+        # 2. Open operation to remove small noise
         kernel_open = np.ones(self.params['morphology']['small_kernel'], np.uint8)
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel_open,
                                iterations=self.params['morphology']['opening_iterations'])
         
-        # 3. 轻微膨胀以增强边界
+        # 3. Slight dilation to enhance boundaries
         kernel_dilate = np.ones(self.params['morphology']['small_kernel'], np.uint8)
         mask = cv2.dilate(mask, kernel_dilate, 
                          iterations=self.params['morphology']['dilation_iterations'])
         
-        # 4. 填充孔洞
+        # 4. Fill holes
         mask = ndimage.binary_fill_holes(mask).astype(np.uint8)
         
         return mask
     
     def _calculate_mask_quality(self, mask: np.ndarray) -> float:
-        """计算掩码质量分数（0-1）"""
+        """Calculate mask quality score (0-1)"""
         if mask.sum() == 0:
             return 0.0
         
-        # 1. 紧凑度分数（周长^2 / 面积）
+        # 1. Compactness score (perimeter^2 / area)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours:
             return 0.0
@@ -502,7 +502,7 @@ class MobileSAMEngine:
             # 归一化：理想圆为1，越大越不紧凑
             compactness_score = 1.0 / min(compactness, 10.0)
         
-        # 2. 实心度分数
+        # 2. Solidity score
         hull = cv2.convexHull(main_contour)
         hull_area = cv2.contourArea(hull)
         
@@ -512,29 +512,29 @@ class MobileSAMEngine:
             solidity = area / hull_area
             solidity_score = solidity
         
-        # 3. 边界平滑度分数
+        # 3. Boundary smoothness score
         epsilon = 0.01 * perimeter
         approx = cv2.approxPolyDP(main_contour, epsilon, True)
         smoothness = len(approx) / max(perimeter, 1)
         smoothness_score = min(smoothness * 10, 1.0)
         
-        # 综合分数
+        # Combined score
         total_score = compactness_score * 0.4 + solidity_score * 0.4 + smoothness_score * 0.2
         return float(total_score)
     
     def multi_scale_segmentation(self, image: np.ndarray, boxes: List[List[float]]) -> List[np.ndarray]:
         """
-        多尺度分割（提高小颗粒检测率）
+        Multi-scale segmentation (improves small grain detection)
         
         Args:
-            image: 输入图像
-            boxes: 边界框列表
+            image: input image
+            boxes: list of bounding boxes
             
         Returns:
-            掩码列表
+            list of masks
         """
         if not self.params['multi_scale']['enabled']:
-            # 单尺度分割
+            # Single-scale segmentation
             self.set_image(image)
             masks = []
             for box in boxes:
@@ -543,16 +543,16 @@ class MobileSAMEngine:
                     masks.append(mask)
             return masks
         
-        # 多尺度分割
+        # Multi-scale segmentation
         all_masks = []
         
         for scale in self.params['multi_scale']['scales']:
-            # 调整图像大小
+            # Resize image
             h, w = image.shape[:2]
             new_h, new_w = int(h * scale), int(w * scale)
             scaled_image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
             
-            # 调整边界框
+            # Scale bounding boxes
             scaled_boxes = []
             for box in boxes:
                 x1, y1, x2, y2 = box
@@ -562,21 +562,21 @@ class MobileSAMEngine:
                 ]
                 scaled_boxes.append(scaled_box)
             
-            # 在当前尺度下分割
+            # Segment at current scale
             self.set_image(scaled_image)
             
             for i, box in enumerate(scaled_boxes):
                 mask, _ = self.segment_with_box(box)
                 
                 if mask.sum() > 0:
-                    # 调整掩码大小回原始尺寸
+                    # Resize mask back to original size
                     if scale != 1.0:
                         mask = cv2.resize(mask, (w, h), interpolation=cv2.INTER_NEAREST)
                         mask = (mask > 0.5).astype(np.uint8)
                     
                     all_masks.append(mask)
         
-        # 合并多尺度结果
+        # Merge multi-scale results
         if len(all_masks) > 0:
             merged_masks = self._merge_multi_scale_masks(all_masks)
             return merged_masks
@@ -584,11 +584,11 @@ class MobileSAMEngine:
             return []
     
     def _merge_multi_scale_masks(self, masks: List[np.ndarray]) -> List[np.ndarray]:
-        """合并多尺度掩码"""
+        """Merge multi-scale masks"""
         if len(masks) == 0:
             return []
         
-        # 简单去重：合并高度重叠的掩码
+        # Simple deduplication: merge highly overlapping masks
         merged_masks = []
         used = [False] * len(masks)
         
@@ -598,7 +598,7 @@ class MobileSAMEngine:
             
             current_mask = masks[i]
             
-            # 查找重叠掩码
+            # Find overlapping masks
             for j in range(i + 1, len(masks)):
                 if used[j]:
                     continue
@@ -624,9 +624,9 @@ class MobileSAMEngine:
                            mask_scores: List[float],
                            image_shape: Tuple[int, int]) -> List[Optional[np.ndarray]]:
         """
-        智能掩码匹配算法
+        Intelligent mask matching algorithm
         
-        使用多对多匹配 + 质量优先 + 重叠惩罚
+        Uses many-to-many matching + quality priority + overlap penalty
         """
         if len(mobilesam_masks) == 0:
             return [None] * len(yolo_boxes)
@@ -635,9 +635,9 @@ class MobileSAMEngine:
         n_boxes = len(yolo_boxes)
         n_masks = len(mobilesam_masks)
         
-        print(f"🔍 智能匹配: {n_boxes}个框 vs {n_masks}个掩码")
+        print(f"🔍 Intelligent matching: {n_boxes} boxes vs {n_masks} masks")
         
-        # 1. 计算成本矩阵（成本越低越好）
+        # 1. Calculate cost matrix (lower is better)
         cost_matrix = np.zeros((n_boxes, n_masks))
         
         for i, box in enumerate(yolo_boxes):
@@ -647,17 +647,17 @@ class MobileSAMEngine:
             box_center_y = (y1 + y2) / 2
             
             for j, mask in enumerate(mobilesam_masks):
-                # 计算掩码在框内的部分
+                # Calculate mask portion inside box
                 mask_in_box = mask[y1:y2, x1:x2]
                 intersection = np.sum(mask_in_box > 0)
                 
                 if intersection == 0:
-                    cost = 10.0  # 高成本
+                    cost = 10.0  # High cost
                 else:
-                    # 计算覆盖率
+                    # Calculate coverage
                     coverage = intersection / box_area
                     
-                    # 计算中心偏移
+                    # Calculate center offset
                     mask_indices = np.where(mask > 0)
                     if len(mask_indices[0]) > 0:
                         mask_center_y = np.mean(mask_indices[0])
@@ -668,29 +668,29 @@ class MobileSAMEngine:
                     center_distance = np.sqrt((mask_center_x - box_center_x)**2 + 
                                              (mask_center_y - box_center_y)**2)
                     
-                    # 归一化距离
+                    # Normalize distance
                     norm_distance = center_distance / np.sqrt(h**2 + w**2)
                     
-                    # 成本 = 低覆盖率 + 高距离 + 低质量
+                    # Cost = low coverage + high distance + low quality
                     cost = (1.0 - coverage) * 0.4 + norm_distance * 0.3 + (1.0 - mask_scores[j]) * 0.3
                 
                 cost_matrix[i, j] = cost
         
-        # 2. 使用匈牙利算法进行最优分配
+        # 2. Use Hungarian algorithm for optimal assignment
         assigned_masks = [None] * n_boxes
         mask_used = [False] * n_masks
         
         if n_boxes > 0 and n_masks > 0:
-            # 匈牙利算法找到最小成本分配
+            # Hungarian algorithm finds minimum cost assignment
             row_ind, col_ind = linear_sum_assignment(cost_matrix)
             
-            # 应用分配（成本阈值）
+            # Apply assignment (cost threshold)
             for i, j in zip(row_ind, col_ind):
                 if i < n_boxes and j < n_masks and cost_matrix[i, j] < 0.7:  # 成本阈值
                     assigned_masks[i] = mobilesam_masks[j]
                     mask_used[j] = True
             
-            # 3. 二次分配：为未分配的框寻找次优掩码
+            # 3. Secondary assignment: find suboptimal masks for unassigned boxes
             for i in range(n_boxes):
                 if assigned_masks[i] is None:
                     # 按成本排序
@@ -702,14 +702,14 @@ class MobileSAMEngine:
                             mask_used[j] = True
                             break
             
-            # 4. 统计分配结果
+            # 4. Count assignment results
             assigned_count = sum(1 for mask in assigned_masks if mask is not None)
-            print(f" 智能匹配完成: {assigned_count}/{n_boxes} 个框获得掩码")
+            print(f" Intelligent matching complete: {assigned_count}/{n_boxes} boxes got masks")
             
         return assigned_masks
     
     def get_performance_stats(self) -> Dict[str, Any]:
-        """获取性能统计"""
+        """Get performance statistics"""
         stats = self.performance_stats.copy()
         
         if stats['total_inferences'] > 0:
@@ -720,7 +720,7 @@ class MobileSAMEngine:
         return stats
     
     def reset_stats(self):
-        """重置性能统计"""
+        """Reset performance statistics"""
         self.performance_stats = {
             'total_inferences': 0,
             'total_masks_generated': 0,
@@ -733,12 +733,12 @@ class MobileSAMEngine:
 
 
 if __name__ == "__main__":
-    print(" MobileSAM引擎测试")
+    print(" MobileSAM Engine Test")
     print("=" * 60)
     
-    # 测试代码
+    # Test code
     try:
         engine = MobileSAMEngine(device="cpu")
-        print(" 引擎测试通过")
+        print(" Engine test passed")
     except Exception as e:
-        print(f" 引擎测试失败: {e}")
+        print(f" Engine test failed: {e}")

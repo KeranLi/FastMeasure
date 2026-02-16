@@ -1,7 +1,7 @@
 """
-UltraFastSAM核心分割流水线 - 基于skimage的优化版
-文件名：yolo_fastsam.py
-功能：使用skimage.measure.find_contours进行高质量轮廓提取
+UltraFastSAM Core Segmentation Pipeline - skimage-optimized version
+Filename: yolo_fastsam.py
+Function: Use skimage.measure.find_contours for high-quality contour extraction
 """
 
 import numpy as np
@@ -18,22 +18,22 @@ import time
 import torch
 from ultralytics import YOLO
 
-# ===== 导入skimage =====
+# ===== Import skimage =====
 from skimage import measure
 from skimage.filters import gaussian
 from skimage.morphology import binary_opening, binary_closing, disk
-print(" 已导入skimage相关模块")
+print(" skimage related modules imported")
 
-# ===== 强制导入项目一函数 =====
+# ===== Force import project one functions =====
 import os
 from pathlib import Path
 
-# 获取项目一模块路径
+# Get project one module path
 current_file = Path(__file__).resolve()
 project_root = current_file.parent.parent
 project1_dir = project_root / "segmenteverygrain"
 
-# 添加到Python路径
+# Add to Python path
 if str(project1_dir) not in sys.path:
     sys.path.insert(0, str(project1_dir))
 
@@ -47,24 +47,24 @@ try:
         merge_overlapping_polygons
     )
     PROJECT1_AVAILABLE = True
-    print(" 成功导入segmen文件中的计算函数")
+    print(" Successfully imported calculation functions from segment file")
 except ImportError as e:
-    print(f" 导入segmen文件中的计算函数失败: {e}")
+    print(f" Failed to import calculation functions from segment file: {e}")
     sys.exit(1)
 
-# 导入UltraFastSAM引擎
+# Import UltraFastSAM engine
 try:
     from .seg_engine import UltraFastSAM
 except ImportError:
-    # 如果在主程序中运行，可能需要调整导入方式
+    # If running in main program, may need to adjust import method
     try:
         from seg_engine import UltraFastSAM
     except ImportError:
-        print(" 无法导入UltraFastSAM引擎")
+        print(" Cannot import UltraFastSAM engine")
 
 
 class UltraSegmentationPipeline:
-    """UltraFastSAM核心分割流水线 - 基于优化版"""
+    """UltraFastSAM Core Segmentation Pipeline - Optimized version"""
     
     def __init__(self, config: Dict = None):
         self.config = config or {}
@@ -89,7 +89,7 @@ class UltraSegmentationPipeline:
             'morph_radius': 1,  # 形态学操作半径
         }
         
-        print("UltraSegmentationPipeline初始化完成")
+        print("UltraSegmentationPipeline initialization complete")
     
     def load_models(self, yolo_path: str, fastsam_path: str, device: str = "cpu") -> bool:
         try:
@@ -97,7 +97,7 @@ class UltraSegmentationPipeline:
             self.ultra_fastsam = UltraFastSAM(fastsam_path, device)
             return True
         except Exception as e:
-            print(f"模型加载失败: {e}")
+            print(f"Model loading failed: {e}")
             return False
     
     def get_performance(self) -> Dict[str, float]:
@@ -144,47 +144,47 @@ class UltraSegmentationPipeline:
         boxes_array = detections_df['box'].values
         
         self.performance['yolo_time'] = time.time() - yolo_start
-        print(f"YOLO检测到 {len(boxes_array)} 个颗粒")
+        print(f"YOLO detected {len(boxes_array)} grains")
         return boxes_array, detections_df
     
     def _enhance_mask_skimage(self, binary_mask: np.ndarray) -> np.ndarray:
         """
-        使用skimage增强掩码质量
+        Enhance mask quality using skimage
         """
         if binary_mask.sum() == 0:
             return binary_mask
         
         try:
-            # 1. 高斯平滑
+            # 1. Gaussian smoothing
             smoothed = gaussian(binary_mask.astype(float), 
                               sigma=self.contour_params['smooth_sigma'])
             
-            # 2. 重新阈值化
+            # 2. Re-threshold
             enhanced = (smoothed > 0.5).astype(np.uint8)
             
-            # 3. 形态学操作：先闭后开
+            # 3. Morphological operations: close then open
             selem = disk(self.contour_params['morph_radius'])
             enhanced = binary_closing(enhanced, selem).astype(np.uint8)
             enhanced = binary_opening(enhanced, selem).astype(np.uint8)
             
-            # 4. 填充孔洞
+            # 4. Fill holes
             from scipy import ndimage
             enhanced = ndimage.binary_fill_holes(enhanced).astype(np.uint8)
             
             return enhanced
         except Exception as e:
-            print(f"掩码增强失败: {e}")
+            print(f"Mask enhancement failed: {e}")
             return binary_mask
     
     def _extract_contour_skimage(self, binary_mask: np.ndarray, idx: int = 0) -> Optional[Polygon]:
         """
-        使用skimage提取平滑轮廓
+        Extract smooth contour using skimage
         """
         if binary_mask.sum() == 0:
             return None
         
         try:
-            # 方法1：直接使用skimage的find_contours
+            # Method 1: Directly use skimage's find_contours
             contours = measure.find_contours(
                 binary_mask, 
                 level=self.contour_params['level']
@@ -193,7 +193,7 @@ class UltraSegmentationPipeline:
             if not contours:
                 return None
             
-            # 选择面积最大的轮廓
+            # Select contour with largest area
             main_contour = None
             max_area = 0
             
@@ -212,15 +212,15 @@ class UltraSegmentationPipeline:
             if main_contour is None or len(main_contour) < 3:
                 return None
             
-            # 转换为(x, y)格式
+            # Convert to (x, y) format
             points = [(point[1], point[0]) for point in main_contour]
             
-            # 如果点数太少，进行插值
+            # If too few points, resample
             if len(points) < self.contour_params['min_contour_points']:
                 points = self._resample_contour_points(points, 
                     target_points=self.contour_params['min_contour_points'])
             
-            # 如果点数太多，进行简化
+            # If too many points, simplify
             elif len(points) > self.contour_params['max_contour_points']:
                 points = self._simplify_contour_points(points, 
                     tolerance=self.contour_params['simplify_tolerance'])
@@ -243,21 +243,21 @@ class UltraSegmentationPipeline:
             return polygon if polygon.is_valid else None
             
         except Exception as e:
-            print(f"skimage轮廓提取失败 (颗粒{idx}): {e}")
+            print(f"skimage contour extraction failed (grain {idx}): {e}")
             return None
     
     def _resample_contour_points(self, points: List[Tuple[float, float]], 
                                 target_points: int = 100) -> List[Tuple[float, float]]:
         """
-        轮廓点重采样
+        Contour point resampling
         """
         if len(points) <= 2:
             return points
         
-        # 将点转换为numpy数组
+        # Convert points to numpy array
         points_array = np.array(points)
         
-        # 计算轮廓总长度
+        # Calculate total contour length
         total_length = 0
         segment_lengths = []
         
@@ -271,7 +271,7 @@ class UltraSegmentationPipeline:
         if total_length == 0:
             return points
         
-        # 均匀采样
+        # Uniform sampling
         step = total_length / target_points
         new_points = []
         current_length = 0
@@ -281,12 +281,12 @@ class UltraSegmentationPipeline:
         for i in range(target_points):
             target_length = i * step
             
-            # 找到目标长度所在的线段
+            # Find segment containing target length
             while segment_accumulated + segment_lengths[segment_index] < target_length:
                 segment_accumulated += segment_lengths[segment_index]
                 segment_index = (segment_index + 1) % len(points_array)
             
-            # 在线段上插值
+            # Interpolate on segment
             p1 = points_array[segment_index]
             p2 = points_array[(segment_index + 1) % len(points_array)]
             
@@ -302,7 +302,7 @@ class UltraSegmentationPipeline:
             
             new_points.append((x, y))
         
-        # 确保闭合
+        # Ensure closed
         if new_points and new_points[0] != new_points[-1]:
             new_points.append(new_points[0])
         
@@ -311,7 +311,7 @@ class UltraSegmentationPipeline:
     def _simplify_contour_points(self, points: List[Tuple[float, float]], 
                                tolerance: float = 1.0) -> List[Tuple[float, float]]:
         """
-        简化轮廓点（使用Douglas-Peucker算法）
+        Simplify contour points (using Douglas-Peucker algorithm)
         """
         if len(points) <= 3:
             return points
@@ -320,19 +320,19 @@ class UltraSegmentationPipeline:
             from shapely.geometry import LineString
             from shapely.ops import simplify
             
-            # 创建LineString
+            # Create LineString
             line = LineString(points)
             
-            # 简化
+            # Simplify
             simplified_line = simplify(line, tolerance=tolerance)
             
-            # 获取简化后的点
+            # Get simplified points
             if hasattr(simplified_line, 'coords'):
                 return list(simplified_line.coords)
             else:
                 return points
         except Exception:
-            # 如果简化失败，返回原始点
+            # If simplification fails, return original points
             return points
     
     def ultra_segmentation(self, 
@@ -348,27 +348,27 @@ class UltraSegmentationPipeline:
         total_start = time.time()
         
         print("=" * 60)
-        print("UltraFastSAM分割流水线 (skimage优化版)")
+        print("UltraFastSAM Segmentation Pipeline (skimage-optimized)")
         print("=" * 60)
         
         h, w = image.shape[:2]
-        print(f"输入图像: {w}x{h} 像素")
+        print(f"Input image: {w}x{h} pixels")
         
-        # 步骤1: YOLO检测
-        print("\n步骤1: YOLO颗粒检测...")
+        # Step 1: YOLO detection
+        print("\nStep 1: YOLO grain detection...")
         boxes_array, detections_df = self.detect_grains_yolo(
             image, conf_threshold, min_bbox_area
         )
         
         if len(boxes_array) == 0:
-            print("未检测到颗粒")
+            print("No grains detected")
             empty_labels = np.zeros((h, w), dtype=np.int32)
             empty_mask = np.zeros((h, w), dtype=np.uint8)
             self.performance['total_time'] = time.time() - total_start
             return [], empty_labels, empty_mask, pd.DataFrame(), None, None
         
-        # 步骤2: UltraFastSAM分割
-        print("\n步骤2: UltraFastSAM智能分割...")
+        # Step 2: UltraFastSAM segmentation
+        print("\nStep 2: UltraFastSAM intelligent segmentation...")
         fastsam_start = time.time()
         
         global_masks, mask_scores = self.ultra_fastsam.inference_whole_image(image)
@@ -387,8 +387,8 @@ class UltraSegmentationPipeline:
         
         self.performance['fastsam_time'] = time.time() - fastsam_start
         
-        # 步骤3: 使用skimage进行高质量的轮廓提取
-        print(f"\n步骤3: 使用skimage进行轮廓提取...")
+        # Step 3: Use skimage for high-quality contour extraction
+        print(f"\nStep 3: Extracting contours using skimage...")
         postprocess_start = time.time()
         processed_polygons = []
         
@@ -415,49 +415,49 @@ class UltraSegmentationPipeline:
             if polygon is not None and polygon.is_valid and polygon.area >= min_area:
                 processed_polygons.append(polygon)
             
-            # 进度显示
+            # Progress display
             if (i + 1) % 50 == 0 or (i + 1) == len(boxes_array):
-                print(f"  已处理 {i+1}/{len(boxes_array)} 个颗粒")
+                print(f"  Processed {i+1}/{len(boxes_array)} grains")
         
-        print(f"找到 {len(processed_polygons)} 个有效多边形")
+        print(f"Found {len(processed_polygons)} valid polygons")
         
-        # 步骤4: 使用项目一后处理 - 修复：创建假的image_pred
+        # Step 4: Use project one post-processing - fix: create fake image_pred
         if len(processed_polygons) > 0 and PROJECT1_AVAILABLE:
             try:
-                # 🆕 修复：创建假的image_pred参数
-                # 项目一的merge_overlapping_polygons函数需要一个image_pred参数
-                # 创建一个全黑的图像作为假的预测结果
+                # 🆕 Fix: create fake image_pred parameter
+                # Project one's merge_overlapping_polygons function needs an image_pred parameter
+                # Create a black image as fake prediction result
                 fake_image_pred = np.zeros((h, w, 3), dtype=np.float32)
                 
                 new_grains, comps, g = find_connected_components(processed_polygons, min_area)
                 processed_polygons = merge_overlapping_polygons(
-                    processed_polygons, new_grains, comps, min_area, fake_image_pred  # 传入假的image_pred
+                    processed_polygons, new_grains, comps, min_area, fake_image_pred  # pass fake image_pred
                 )
-                print(f"后处理后颗粒数: {len(processed_polygons)}")
+                print(f"Post-processing grain count: {len(processed_polygons)}")
             except Exception as e:
-                print(f" 项目一后处理失败: {e}")
-                # 如果失败，使用简单后处理
+                print(f" Project one post-processing failed: {e}")
+                # If failed, use simple post-processing
                 processed_polygons = self._simple_postprocess(processed_polygons, min_area)
         elif len(processed_polygons) > 0:
-            # 如果没有项目一函数，使用简单后处理
+            # If project one functions not available, use simple post-processing
             processed_polygons = self._simple_postprocess(processed_polygons, min_area)
         
         self.performance['postprocess_time'] = time.time() - postprocess_start
         
-        # 步骤5: 创建标签
-        print("\n步骤5: 创建标签图像...")
+        # Step 5: Create labels
+        print("\nStep 5: Creating label image...")
         if len(processed_polygons) > 0 and PROJECT1_AVAILABLE:
             try:
                 labels, mask_all = create_labeled_image(processed_polygons, image)
-                print(" 使用项目一函数创建标签")
+                print(" Using project one functions to create labels")
             except Exception as e:
-                print(f"标签创建失败: {e}")
+                print(f"Label creation failed: {e}")
                 labels, mask_all = self._create_simple_labels(processed_polygons, image)
         else:
             labels, mask_all = self._create_simple_labels(processed_polygons, image)
         
-        # 步骤6: 计算属性
-        print("\n步骤6: 计算颗粒属性...")
+        # Step 6: Calculate properties
+        print("\nStep 6: Calculating grain properties...")
         if np.max(labels) > 0:
             try:
                 props = measure.regionprops_table(
@@ -471,12 +471,12 @@ class UltraSegmentationPipeline:
                 )
                 grain_data = pd.DataFrame(props)
             except Exception as e:
-                print(f"计算颗粒属性失败: {e}")
+                print(f"Failed to calculate grain properties: {e}")
                 grain_data = pd.DataFrame()
         else:
             grain_data = pd.DataFrame()
         
-        # 步骤7: 可视化
+        # Step 7: Visualization
         fig, ax = None, None
         if plot_image and len(processed_polygons) > 0:
             try:
@@ -492,23 +492,23 @@ class UltraSegmentationPipeline:
                 plt.xlim([0, w])
                 plt.ylim([h, 0])
                 plt.tight_layout()
-                print(" 可视化完成")
+                print(" Visualization complete")
                 
             except Exception as e:
-                print(f"可视化失败: {e}")
+                print(f"Visualization failed: {e}")
         
-        # 性能总结
+        # Performance summary
         total_time = time.time() - total_start
         self.performance['total_time'] = total_time
         
-        print(f"\n最终结果: {len(processed_polygons)} 个颗粒")
+        print(f"\nFinal result: {len(processed_polygons)} grains")
         print("=" * 60)
         
         return processed_polygons, labels, mask_all, grain_data, fig, ax
     
     def _simple_postprocess(self, polygons: List[Polygon], min_area: int) -> List[Polygon]:
         """
-        简单后处理 - 去除高度重叠的多边形
+        Simple post-processing - remove highly overlapping polygons
         """
         if len(polygons) <= 1:
             return polygons
@@ -540,7 +540,7 @@ class UltraSegmentationPipeline:
         return filtered_polygons
     
     def _create_simple_labels(self, polygons: List[Polygon], image: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """创建简单的标签图像"""
+        """Create simple label image"""
         h, w = image.shape[:2]
         labels = np.zeros((h, w), dtype=np.int32)
         mask_all = np.zeros((h, w), dtype=np.uint8)
@@ -567,7 +567,7 @@ class UltraSegmentationPipeline:
         return labels, mask_all
     
     def _is_edge_grain(self, mask: np.ndarray, keep_edges: Optional[Dict]) -> bool:
-        """检查是否为边缘颗粒"""
+        """Check if grain is at edge"""
         h, w = mask.shape
         edge_thickness = 4
         
@@ -590,24 +590,24 @@ class UltraSegmentationPipeline:
             return top_edge or bottom_edge or right_edge or left_edge
     
     def update_contour_params(self, params: Dict):
-        """更新轮廓提取参数"""
+        """Update contour extraction parameters"""
         self.contour_params.update(params)
-        print("轮廓参数已更新")
+        print("Contour parameters updated")
 
 
 if __name__ == "__main__":
-    print("UltraSegmentationPipeline测试")
+    print("UltraSegmentationPipeline Test")
     print("=" * 60)
     
-    # 创建pipeline实例
+    # Create pipeline instance
     pipeline = UltraSegmentationPipeline()
     
-    # 可以调整轮廓提取参数
+    # Can adjust contour extraction parameters
     pipeline.update_contour_params({
-        'level': 0.5,  # 降低阈值可能获得更多细节
-        'smooth_sigma': 0.8,  # 减小平滑强度
+        'level': 0.5,  # Lower threshold may get more details
+        'smooth_sigma': 0.8,  # Reduce smoothing intensity
         'min_contour_points': 50,
         'max_contour_points': 300,
     })
     
-    print("UltraSegmentationPipeline测试通过")
+    print("UltraSegmentationPipeline test passed")
