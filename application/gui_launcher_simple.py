@@ -208,6 +208,16 @@ class FastMeasureSimpleGUI:
         if self.is_running:
             return
         
+        model = self.model_var.get()
+        mode = self.mode_var.get()
+        input_path = self.input_path.get()
+        
+        # Interactive 模式：使用嵌入式 GUI
+        if mode == "interactive":
+            self._run_interactive_embedded(model, input_path)
+            return
+        
+        # Auto/Batch 模式：使用子进程
         cmd = self._build_command()
         if not cmd:
             return
@@ -215,15 +225,46 @@ class FastMeasureSimpleGUI:
         self.is_running = True
         self.run_btn.config(state=tk.DISABLED)
         self.status_var.set("Running...")
-        self._log(f"Starting {self.model_var.get()}...")
+        self._log(f"Starting {model}...")
         self._log(f"Command: {' '.join(cmd)}")
         
         thread = threading.Thread(target=self._run_process, args=(cmd,))
         thread.daemon = True
         thread.start()
     
+    def _run_interactive_embedded(self, model, input_path):
+        """运行嵌入式 Interactive 模式（直接在 GUI 中）"""
+        try:
+            # 检查是否需要选择图片
+            if not input_path:
+                filetypes = [("Images", "*.tif *.tiff *.jpg *.jpeg *.png *.bmp")]
+                path = filedialog.askopenfilename(title="Select Image for Interactive Mode", filetypes=filetypes)
+                if not path:
+                    self._log("Interactive mode cancelled - no image selected")
+                    return
+                input_path = path
+                self.input_path.set(path)
+            
+            self._log("=" * 50)
+            self._log(f"Starting Embedded Interactive Mode ({model.upper()})")
+            self._log("=" * 50)
+            self._log(f"Image: {input_path}")
+            
+            # 导入并启动嵌入式 interactive
+            try:
+                from gui_interactive import run_interactive_gui
+                run_interactive_gui(self.root, model, input_path)
+                self._log("✓ Interactive window opened")
+            except ImportError as e:
+                self._log(f"✗ Cannot load interactive module: {e}")
+                messagebox.showerror("Error", f"Failed to start interactive mode: {e}")
+                
+        except Exception as e:
+            self._log(f"✗ Error: {e}")
+            messagebox.showerror("Error", f"Interactive mode error: {e}")
+    
     def _run_process(self, cmd):
-        """Run process in background."""
+        """Run process in background (for Auto/Batch modes only)."""
         try:
             # 设置工作目录
             cwd = str(RESOURCE_PATH) if is_frozen_app() else None
@@ -231,83 +272,26 @@ class FastMeasureSimpleGUI:
             env = os.environ.copy()
             env['PYTHONPATH'] = str(RESOURCE_PATH)
             
-            # 检查是否是 interactive 模式
-            is_interactive = '--interactive' in cmd
+            # 普通模式（Auto/Batch）：正常捕获输出
+            self.process = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                universal_newlines=True, bufsize=1, cwd=cwd, env=env
+            )
+            for line in iter(self.process.stdout.readline, ''):
+                if line:
+                    self.root.after(0, lambda l=line: self._log(l.strip()))
             
-            if is_interactive and is_frozen_app():
-                # Interactive 模式在打包应用中：使用独立的子进程，不捕获输出
-                # 这样 matplotlib 窗口可以正常显示
-                self._log("Launching interactive mode in separate process...")
-                self._log("Note: Interactive window will open separately")
-                
-                # 启动进程但不捕获输出（让 matplotlib 窗口正常显示）
-                self.process = subprocess.Popen(
-                    cmd, 
-                    stdout=subprocess.PIPE, 
-                    stderr=subprocess.STDOUT,
-                    universal_newlines=True, 
-                    bufsize=1, 
-                    cwd=cwd, 
-                    env=env
-                )
-                
-                # 在新线程中读取输出，不阻塞 GUI
-                def read_output():
-                    for line in iter(self.process.stdout.readline, ''):
-                        if line:
-                            try:
-                                self.root.after(0, lambda l=line: self._log(l.strip()))
-                            except:
-                                pass
-                    
-                    self.process.wait()
-                    if self.process.returncode == 0:
-                        try:
-                            self.root.after(0, self._on_success)
-                        except:
-                            pass
-                    else:
-                        try:
-                            self.root.after(0, lambda: self._on_error(f"Exit code: {self.process.returncode}"))
-                        except:
-                            pass
-                    
-                    try:
-                        self.is_running = False
-                        self.root.after(0, lambda: self.run_btn.config(state=tk.NORMAL))
-                    except:
-                        pass
-                
-                import threading
-                output_thread = threading.Thread(target=read_output)
-                output_thread.daemon = True
-                output_thread.start()
-                
-                # 等待进程完成（但设置超时，这样不会永远阻塞）
-                self.process.wait()
-                
+            self.process.wait()
+            if self.process.returncode == 0:
+                self.root.after(0, self._on_success)
             else:
-                # 普通模式（Auto/Batch）：正常捕获输出
-                self.process = subprocess.Popen(
-                    cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                    universal_newlines=True, bufsize=1, cwd=cwd, env=env
-                )
-                for line in iter(self.process.stdout.readline, ''):
-                    if line:
-                        self.root.after(0, lambda l=line: self._log(l.strip()))
-                
-                self.process.wait()
-                if self.process.returncode == 0:
-                    self.root.after(0, self._on_success)
-                else:
-                    self.root.after(0, lambda: self._on_error(f"Exit code: {self.process.returncode}"))
+                self.root.after(0, lambda: self._on_error(f"Exit code: {self.process.returncode}"))
                     
         except Exception as e:
             self.root.after(0, lambda: self._on_error(str(e)))
         finally:
-            if not is_interactive:
-                self.is_running = False
-                self.root.after(0, lambda: self.run_btn.config(state=tk.NORMAL))
+            self.is_running = False
+            self.root.after(0, lambda: self.run_btn.config(state=tk.NORMAL))
     
     def _on_success(self):
         self.status_var.set("Completed")

@@ -1,5 +1,5 @@
 # PyInstaller hook for OpenCV (cv2)
-# This resolves the recursion error and missing config during cv2 loading
+# 解决 OpenCV 配置文件缺失问题
 
 from PyInstaller.utils.hooks import collect_dynamic_libs, collect_data_files, collect_submodules
 import cv2
@@ -11,15 +11,25 @@ cv2_path = os.path.dirname(cv2.__file__)
 # Collect all OpenCV binaries
 binaries = collect_dynamic_libs('cv2')
 
-# Collect ALL cv2 data files (including config.py)
+# Collect ALL cv2 data files
 datas = collect_data_files('cv2', includes=['**/*'])
 
-# Also explicitly add the config file if not captured
-config_path = os.path.join(cv2_path, 'config.py')
-if os.path.exists(config_path):
-    datas.append((config_path, 'cv2'))
+# 显式添加所有配置文件（关键修复）
+config_files = [
+    'config.py',
+    'config-3.py', 
+    'config-3.12.py',
+    'load_config_py2.py',
+    'load_config_py3.py'
+]
 
-# Collect all submodules to ensure nothing is missing
+for config_file in config_files:
+    full_path = os.path.join(cv2_path, config_file)
+    if os.path.exists(full_path):
+        datas.append((full_path, 'cv2'))
+        print(f"[hook-cv2] Added config: {config_file}")
+
+# Collect all submodules
 hiddenimports = collect_submodules('cv2')
 hiddenimports += [
     'cv2.cv2',
@@ -35,5 +45,4 @@ hiddenimports += [
     'cv2.mat_wrapper',
 ]
 
-# Exclude problematic imports
 excludedimports = []
