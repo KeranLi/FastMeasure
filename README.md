@@ -1,10 +1,23 @@
-# FastMeasure - Rock Grain Auto Segmentation System
 
-> **Acknowledgment**: This project is inspired by and builds upon [segmenteverygrain](https://github.com/zsylvester/segmenteverygrain) by Zoltán Sylvester. FastMeasure introduces YOLO-based detection, multiple SAM variants, automatic scale detection, and enhanced geometric analysis.
+<!-- 顶部徽章区域 -->
+<div align="center">
+
+##  FastMeasure: A cross-platform workflow and software to fast measure the geomtric parameters via deep learning 
+</div>
+
+Keran Li<sup>a</sup>, Wen Lai<sup>b,*</sup>
+
+<sup>a</sup>State Key Laboratory of Critical Earth Material Cycling and Mineral Deposits, Frontiers Science Center for Critical Earth Material Cycling, School of Earth Sciences and Engineering, Nanjing University, Nanjing, 210023, China
+
+<sup>b</sup>Gannan Normal University
+
+<sup>*</sup>Corresponding authors
+
+---
 
 ## Project Overview
 
-FastMeasure is a professional tool for processing rock microscopic images, automatically detecting and segmenting grains. Based on deep learning technology, the system supports two model combinations: **YOLO+FastSAM** and **YOLO+MobileSAM**, combined with intelligent scale bar detection and rich geometric parameter calculation, enabling precise extraction of grain information from rock microscopic images and generation of complete statistical analysis reports.
+FastMeasure is a professional tool for processing rock microscopic images, automatically detecting and segmenting grains. This project is inspired by and builds upon [segmenteverygrain](https://github.com/zsylvester/segmenteverygrain) by Zoltán Sylvester. FastMeasure introduces YOLO-based detection, multiple SAM variants, automatic scale detection, and enhanced geometric analysis.. Based on deep learning technology, the system supports two model combinations: **YOLO+FastSAM** and **YOLO+MobileSAM**, combined with intelligent scale bar detection and rich geometric parameter calculation, enabling precise extraction of grain information from rock microscopic images and generation of complete statistical analysis reports.
 
 ### Inspiration
 
