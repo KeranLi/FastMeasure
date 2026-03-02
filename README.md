@@ -123,7 +123,12 @@ conda env create -f envs/environment.yml
 # 3. Activate environment
 conda activate fastmeasure
 
-# 4. Run FastMeasure
+# 5. Prepare model files
+# Download from Google Drive (see Model Files section)
+# Then verify:
+python utils/download_models.py
+
+# 6. Run FastMeasure
 python run_fastsam.py --input your_image.jpg
 ```
 
@@ -157,7 +162,7 @@ conda activate fastmeasure
 # 2. Install dependencies
 pip install -r envs/requirements.txt
 
-# 3. Run FastMeasure
+# 5. Run FastMeasure (after downloading models, see Model Files section)
 python run_fastsam.py --input your_image.jpg
 ```
 
@@ -207,10 +212,48 @@ python run_fastsam.py --help
     pip install mobile_sam
     ```
 
-4. Prepare model files:
-    - YOLO model: `./models/best_yolo_20260107.pt` (FastSAM workflow) or `./models/best.pt` (MobileSAM workflow)
-    - FastSAM model: `./models/FastSAM-s.pt`
-    - MobileSAM model: `./models/mobile_sam.pt`
+## Model Files
+
+FastMeasure requires pre-trained model files (~700 MB total, not included in repository).
+
+### Download Model Files
+
+#### Option 1: Google Drive (Recommended)
+
+1. Download model files from Google Drive:
+   - **Link**: https://drive.google.com/drive/folders/1SPah9woaytIeinkLzQgGiXyj_SCJ3v1q?usp=drive_link
+   - Files: `best_yolo_20260107.pt`, `FastSAM-s.pt`, `mobile_sam.pt`
+
+2. Place downloaded files in `models/` folder
+
+#### Option 2: Manual Preparation
+
+If you have trained your own models, place them in `models/` folder:
+
+| Model | Filename | Size | Required |
+|-------|----------|------|----------|
+| YOLO Detection | `best_yolo_20260107.pt` | ~100 MB | ✓ Yes |
+| FastSAM | `FastSAM-s.pt` | ~150 MB | ✓ Yes |
+| MobileSAM | `mobile_sam.pt` | ~450 MB | ✗ No (optional) |
+
+### Check Model Files
+
+```bash
+python utils/download_models.py
+```
+
+This will check if all required model files are present.
+
+### Model File Structure
+
+After downloading, your `models/` folder should look like:
+
+```
+models/
+├── best_yolo_20260107.pt    # YOLO detection model
+├── FastSAM-s.pt             # FastSAM model
+└── mobile_sam.pt            # MobileSAM model (optional)
+```
 
 ## Usage Guide
 
@@ -513,15 +556,16 @@ results/
 
 ```
 .
-├── run.py                      # Unified entry script (new)
-├── run_fastsam.py              # FastSAM startup script
-├── run_mobilesam.py            # MobileSAM startup script (supports interactive mode)
-├── utils/                      # Utility scripts folder
+├── utils/
+│   ├── download_models.py      # Model file download script
 │   ├── train_yolo.py           # YOLO model training/fine-tuning script
 │   ├── gui_launcher.py         # GUI launcher for desktop app
 │   ├── file_dialog.py          # Cross-platform file dialog utilities
 │   ├── grain_marker.py         # Grain labeling module
 │   └── scale_detector.py       # Scale bar detection module
+├── run.py                      # Unified entry script (new)
+├── run_fastsam.py              # FastSAM startup script
+├── run_mobilesam.py            # MobileSAM startup script (supports interactive mode)
 ├── mobilesam_interactive.py    # MobileSAM standalone interactive tool
 ├── configs/fastsam.yaml            # FastSAM configuration file
 ├── configs/mobilesam.yaml      # MobileSAM configuration file
