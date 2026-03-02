@@ -5,23 +5,19 @@
 ##  FastMeasure: A cross-platform workflow and software to fast measure the geomtric parameters via deep learning 
 </div>
 
-Keran Li<sup>a</sup>, Wen Lai<sup>b,*</sup>
+Keran Li<sup>a</sup>, Shuhuai Ye<sup>a</sup>, Jintao Dai<sup>a</sup>, Anlin Ma<sup>a</sup>, Wen Lai<sup>b,+</sup>, Xiumian Hu<sup>a,+</sup>
 
 <sup>a</sup>State Key Laboratory of Critical Earth Material Cycling and Mineral Deposits, Frontiers Science Center for Critical Earth Material Cycling, School of Earth Sciences and Engineering, Nanjing University, Nanjing, 210023, China
 
 <sup>b</sup>Gannan Normal University
 
-<sup>*</sup>Corresponding authors
+<sup>+</sup>Corresponding authors
 
 ---
 
 ## Project Overview
 
-FastMeasure is a professional tool for processing rock microscopic images, automatically detecting and segmenting grains. This project is inspired by and builds upon [segmenteverygrain](https://github.com/zsylvester/segmenteverygrain) by Zoltán Sylvester. FastMeasure introduces YOLO-based detection, multiple SAM variants, automatic scale detection, and enhanced geometric analysis.. Based on deep learning technology, the system supports two model combinations: **YOLO+FastSAM** and **YOLO+MobileSAM**, combined with intelligent scale bar detection and rich geometric parameter calculation, enabling precise extraction of grain information from rock microscopic images and generation of complete statistical analysis reports.
-
-### Inspiration
-
-This project is inspired by and builds upon **[segmenteverygrain](https://github.com/zsylvester/segmenteverygrain)** by Zoltán Sylvester. We appreciate the excellent work done by the segmenteverygrain team in developing a U-Net + SAM based grain segmentation solution for geomorphology and sedimentary geology research.
+FastMeasure is a professional tool for processing rock microscopic images, automatically detecting and segmenting grains. This project is inspired by and builds upon **[segmenteverygrain](https://github.com/zsylvester/segmenteverygrain)** by Zoltán Sylvester. We appreciate the excellent work done by the segmenteverygrain team in developing a U-Net + SAM based grain segmentation solution for geomorphology and sedimentary geology research. FastMeasure introduces YOLO-based detection, multiple SAM variants, automatic scale detection, and enhanced geometric analysis. Based on deep learning technology, the system supports two model combinations: **YOLO+FastSAM** and **YOLO+MobileSAM**, combined with intelligent scale bar detection and rich geometric parameter calculation, enabling precise extraction of grain information from rock microscopic images and generation of complete statistical analysis reports.
 
 While segmenteverygrain pioneered the use of SAM for grain segmentation, FastMeasure takes a different approach and introduces several enhancements:
 
@@ -37,6 +33,31 @@ While segmenteverygrain pioneered the use of SAM for grain segmentation, FastMea
 | Model Fine-tuning | U-Net (TensorFlow) | **YOLO (Ultralytics, easier)** |
 | Training Data | Manual annotation | **Auto from interactive results** |
 | Code Structure | Notebook + modules | **Modular core library with CLI** |
+
+### FastSAM vs MobileSAM
+
+| Feature | FastSAM | MobileSAM |
+|---------|---------|-----------|
+| **Installation** | Easy (pip install) | Requires GitHub access |
+| **Speed** | ⚡ Very Fast (~0.3s GPU) | 🐢 Slower (~3.7s GPU) |
+| **Precision** | Good | Better |
+| **Interactive** | ✓ Supported | ✓ Supported |
+| **Recommendation** | **Default choice** | When precision matters |
+
+**Recommendation**: Start with **FastSAM** (easier installation, faster). Install MobileSAM later if you need higher precision.
+
+### Installation Requirements
+
+**Minimum requirements (FastSAM only):**
+- Python 3.10+
+- PyTorch + Ultralytics
+- OpenCV, NumPy, Pandas
+- ~17 pip packages total
+
+**Optional (MobileSAM):**
+- MobileSAM from GitHub (see installation guide)
+
+See [Installation Guide](README-Installation.md) for detailed instructions.
 
 The system supports three usage modes:
 - **Auto Processing Mode**: YOLO detection + SAM auto segmentation
@@ -87,18 +108,90 @@ The system can calculate various grain geometric parameters:
 
 ## Installation
 
-### Environment Requirements
-- Python 3.8+
-- PyTorch
-- CUDA (recommended for GPU acceleration)
+### Method 1: Conda Environment (Recommended)
 
-### Installation Steps
+Create environment directly from the provided configuration:
 
-1. Clone this repository to local:
-    ```bash
-    git clone https://github.com/KeranLi/FastMeasure.git
-    cd FastMeasure
-    ```
+```bash
+# 1. Clone repository
+git clone https://github.com/KeranLi/FastMeasure.git
+cd FastMeasure
+
+# 2. Create conda environment (CPU version)
+conda env create -f envs/environment.yml
+
+# 3. Activate environment
+conda activate fastmeasure
+
+# 4. Run FastMeasure
+python run_fastsam.py --input your_image.jpg
+```
+
+#### GPU Version
+
+For GPU support, edit `envs/environment.yml` and remove the `- cpuonly` line before creating the environment:
+
+```bash
+# Edit envs/environment.yml, remove '- cpuonly' line
+conda env create -f envs/environment.yml
+conda activate fastmeasure
+```
+
+Or create GPU environment manually:
+
+```bash
+conda create -n fastmeasure python=3.10 pytorch torchvision cudatoolkit=11.8 -c pytorch -c conda-forge
+conda activate fastmeasure
+pip install -r envs/requirements.txt
+```
+
+### Method 2: Pip Installation
+
+If you prefer pip:
+
+```bash
+# 1. Create conda environment
+conda create -n fastmeasure python=3.10 -y
+conda activate fastmeasure
+
+# 2. Install dependencies
+pip install -r envs/requirements.txt
+
+# 3. Run FastMeasure
+python run_fastsam.py --input your_image.jpg
+```
+
+### Optional: MobileSAM
+
+MobileSAM provides higher precision but requires additional installation from GitHub:
+
+```bash
+# Install from GitHub
+pip install git+https://github.com/ChaoningZhang/MobileSAM.git
+```
+
+Or manual installation:
+1. Download https://github.com/ChaoningZhang/MobileSAM/archive/refs/heads/master.zip
+2. Extract and run: `pip install -e .`
+
+**Note**: MobileSAM is optional. FastSAM is recommended for most use cases (faster and easier to install).
+
+### Environment Files
+
+Configuration files in `envs/` folder:
+- `envs/environment.yml` - Conda environment configuration (**recommended**)
+- `envs/requirements.txt` - Pip requirements list
+- `envs/env-*.yaml` - Additional environment examples (for reference)
+
+### Verification
+
+```bash
+# Test installation
+python -c "from core.segment_core import create_labeled_image; print('OK')"
+
+# Run FastMeasure
+python run_fastsam.py --help
+```
 
 2. Create and activate virtual environment (recommend using `conda`):
     ```bash
