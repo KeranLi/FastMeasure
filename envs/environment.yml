@@ -1,0 +1,26 @@
+name: fastmeasure
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - pandas
+  - matplotlib
+  - pyyaml
+  - tqdm
+  - opencv
+  - scikit-image
+  - scikit-learn
+  - shapely
+  - rasterio
+  - networkx
+  - rtree
+  - pytorch
+  - torchvision
+  - cpuonly  # Remove this line for GPU version
+  - pip:
+    - ultralytics
+    - segment-anything

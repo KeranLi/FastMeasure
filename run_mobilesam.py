@@ -50,7 +50,14 @@ try:
     SYSTEM_AVAILABLE = True
 except ImportError as e:
     SYSTEM_AVAILABLE = False
-    print(f"Failed to import MobileSAM system: {e}")
+    print("=" * 60)
+    print("MobileSAM not available")
+    print("=" * 60)
+    print("MobileSAM is optional. To install:")
+    print("  pip install git+https://github.com/ChaoningZhang/MobileSAM.git")
+    print("\nOr use FastSAM instead (recommended):")
+    print("  python run_fastsam.py --input your_image.jpg")
+    print("=" * 60)
 
 
 # Constants
