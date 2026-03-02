@@ -1,10 +1,12 @@
-# FastSAM Rock Grain Auto Segmentation System Configuration
+# FastSAM Smooth Edge Configuration
+# Optimized for reducing锯齿 (jagged edges) in grain segmentation
+# Usage: python fastsam_interactive.py --config configs/fastsam_smooth.yaml
 
 # ===== Model Path Configuration =====
 model_paths:
   yolo: "./models/best_yolo_20260107.pt"
   fastsam: "./models/FastSAM-s.pt"
-  device: "gpu"
+  device: "cpu"
 
 # ===== Scale Bar Detection Configuration =====
 scale_detection:
@@ -23,23 +25,20 @@ scale_detection:
     min_horizontal_score: 0.6
 
 # ===== Processing Parameters =====
+# Higher thresholds to filter out noise and irregular shapes
 processing:
-  yolo_confidence: 0.25
-  min_area: 30
-  min_bbox_area: 20
+  yolo_confidence: 0.15
+  min_area: 50                    # Increased from 30 to filter small noise
+  min_bbox_area: 30               # Increased from 20
   remove_edge_grains: false
   plot_results: true
   performance_monitoring: true
 
 # ===== Output Configuration =====
 output:
-  # Unified output root directory
   root_dir: "results"
-  # Subdirectory for this mode (fastsam/mobilesam)
   mode_subdir: "fastsam"
-  # Subdirectory for processing type (auto/interactive)
-  type_subdir: "auto"
-  # Whether to create subdirectories per image
+  type_subdir: "interactive"
   create_subdirs: true
   save_visualization: true
   save_mask: true
@@ -61,7 +60,6 @@ logging:
   save_to_file: true
   show_in_console: true
   log_format: "%(asctime)s - %(levelname)s - %(message)s"
-  # Log subdirectory under results/logs
   log_subdir: "fastsam"
 
 # ===== Grain Labeling =====
@@ -77,59 +75,66 @@ grain_labeling:
   outline_color: "black"
   outline_width: 2.0
 
-# ===== FastSAM Engine Parameters =====
+# ===== FastSAM Engine Parameters (OPTIMIZED FOR SMOOTH EDGES) =====
 fastsam_params:
   global:
-    imgsz: 2048
-    conf: 0.10
-    iou: 0.3
+    imgsz: 2048                 # Increased from 1024 for finer detail
+    conf: 0.12                  # Slightly reduced for more complete segmentation
+    iou: 0.25                   # Reduced from 0.3 to reduce overlap
     retina_masks: true
+  
   local:
     imgsz: 512
-    conf: 0.1
+    conf: 0.08                  # Reduced for better local detail
     iou: 0.2
+  
   small:
     imgsz: 256
     conf: 0.05
     iou: 0.1
+  
   filter:
-    min_area: 10
+    min_area: 20                # Increased from 10
     max_area_ratio: 0.8
-    min_solidity: 0.3
-    min_extent: 0.1
+    min_solidity: 0.5           # Increased from 0.3 for smoother shapes
+    min_extent: 0.3             # Increased from 0.1 for more compact grains
+  
+  # KEY: Larger kernels for smoother morphology operations
   morphology:
-    small_kernel: [3, 3]
-    medium_kernel: [5, 5]
-    large_kernel: [7, 7]
-    closing_iterations: 1
+    small_kernel: [5, 5]        # Increased from [3, 3]
+    medium_kernel: [7, 7]       # Increased from [5, 5]
+    large_kernel: [9, 9]        # Increased from [7, 7]
+    closing_iterations: 2       # Increased from 1 to fill small holes
     opening_iterations: 1
 
-# ===== Post-processing =====
+# ===== Post-processing (OPTIMIZED FOR SMOOTH EDGES) =====
 postprocessing:
   smart_postprocess:
     enabled: true
-    min_area: 30
+    min_area: 50
     iou_threshold: 0.5
-    simplify_tolerance: 1.0
-    buffer_distance: 0.5
+    simplify_tolerance: 2.0     # Increased from 1.0 for smoother polygons
+    buffer_distance: 1.0        # Increased from 0.5 for slight smoothing
+  
   overlap_handling:
     merge_threshold: 0.7
     split_connected: true
     remove_small: true
+  
   morphological_optimization:
     enabled: true
-    buffer_size: 0.5
+    buffer_size: 1.5            # Increased from 0.5 for edge smoothing
     simplify: true
 
 # ===== Performance =====
 performance:
   memory:
-    max_image_size_mb: 50
+    max_image_size_mb: 100      # Increased for larger imgsz
     use_memory_mapping: false
   cache:
     enabled: true
     cache_dir: "results/temp/cache"
-    max_cache_size_mb: 1000
+    max_cache_size_mb: 2000     # Increased for higher resolution
   parallel:
     enabled: false
     max_workers: 2

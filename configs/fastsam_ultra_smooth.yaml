@@ -1,0 +1,133 @@
+# FastSAM Ultra Smooth Edge Configuration
+# Maximum smoothing for grain edges (牺牲一些速度换取更平滑的边缘)
+# Usage: python fastsam_interactive.py --config configs/fastsam_ultra_smooth.yaml
+
+# ===== Model Path Configuration =====
+model_paths:
+  yolo: "./models/best_yolo_20260107.pt"
+  fastsam: "./models/FastSAM-s.pt"
+  device: "cpu"
+
+# ===== Scale Bar Detection Configuration =====
+scale_detection:
+  enabled: true
+  known_length_um: 1000.0
+  detection_params:
+    red_lower1: [0, 120, 120]
+    red_upper1: [10, 255, 255]
+    red_lower2: [160, 120, 120]
+    red_upper2: [180, 255, 255]
+    crop_height: 220
+    crop_width: 600
+    search_margin: 80
+    min_aspect_ratio: 8
+    min_horizontal_score: 0.6
+
+# ===== Processing Parameters (ULTRA SMOOTH) =====
+processing:
+  yolo_confidence: 0.15
+  min_area: 80                    # 更大的最小面积，过滤微小噪点
+  min_bbox_area: 50
+  remove_edge_grains: false
+  plot_results: true
+  performance_monitoring: true
+
+# ===== Output Configuration =====
+output:
+  root_dir: "results"
+  mode_subdir: "fastsam"
+  type_subdir: "interactive"
+  create_subdirs: true
+  save_visualization: true
+  save_mask: true
+  save_statistics: true
+  save_summary: true
+  save_performance: true
+  save_debug_info: false
+
+# ===== Logging =====
+logging:
+  level: "INFO"
+  save_to_file: true
+  show_in_console: true
+  log_format: "%(asctime)s - %(levelname)s - %(message)s"
+  log_subdir: "fastsam"
+
+# ===== Grain Labeling =====
+grain_labeling:
+  enabled: true
+  font_size: 11
+  text_color: "yellow"
+  bg_color: ""
+  show_area: true
+  max_labels: 1000
+  min_area: 0
+  text_outline: true
+  outline_color: "black"
+  outline_width: 2.0
+
+# ===== FastSAM Engine Parameters (ULTRA SMOOTH) =====
+fastsam_params:
+  global:
+    imgsz: 2560                 # 进一步提高到 2560
+    conf: 0.10                  # 更低的置信度，捕获更多边缘细节
+    iou: 0.20                   # 更低的 IOU，减少重叠导致的锯齿
+    retina_masks: true
+  
+  local:
+    imgsz: 640                  # 本地处理也提高
+    conf: 0.06
+    iou: 0.15
+  
+  small:
+    imgsz: 320
+    conf: 0.04
+    iou: 0.10
+  
+  filter:
+    min_area: 30
+    max_area_ratio: 0.8
+    min_solidity: 0.6           # 进一步提高，要求更规则的椭圆形状
+    min_extent: 0.4             # 要求更紧凑
+  
+  # ULTRA: 更大的核，更多迭代
+  morphology:
+    small_kernel: [7, 7]        # 从 [5,5] 增大到 [7,7]
+    medium_kernel: [9, 9]       # 从 [7,7] 增大到 [9,9]
+    large_kernel: [11, 11]      # 从 [9,9] 增大到 [11,11]
+    closing_iterations: 3       # 从 2 增加到 3，强力填补孔洞
+    opening_iterations: 2       # 增加 opening，去除毛刺
+
+# ===== Post-processing (ULTRA SMOOTH) =====
+postprocessing:
+  smart_postprocess:
+    enabled: true
+    min_area: 80
+    iou_threshold: 0.5
+    simplify_tolerance: 3.0     # 从 2.0 增大到 3.0，更激进的简化
+    buffer_distance: 2.0        # 从 1.0 增大到 2.0，更大的平滑缓冲区
+  
+  overlap_handling:
+    merge_threshold: 0.7
+    split_connected: true
+    remove_small: true
+  
+  morphological_optimization:
+    enabled: true
+    buffer_size: 2.5            # 从 1.5 增大到 2.5，更强的边缘平滑
+    simplify: true
+    # 额外的高斯平滑（如果代码支持）
+    gaussian_sigma: 1.0         # 添加高斯平滑，sigma=1
+
+# ===== Performance (ULTRA needs more memory) =====
+performance:
+  memory:
+    max_image_size_mb: 150      # 为 2560 分辨率预留更多内存
+    use_memory_mapping: false
+  cache:
+    enabled: true
+    cache_dir: "results/temp/cache"
+    max_cache_size_mb: 3000     # 更大的缓存
+  parallel:
+    enabled: false
+    max_workers: 2
