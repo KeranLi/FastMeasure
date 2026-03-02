@@ -81,8 +81,9 @@ except ImportError as e:
     SCALE_CALIBRATION_AVAILABLE = False
     print(f"Scale calibration module unavailable: {e}")
 
+# Import core segmentation functions (migrated from segmenteverygrain)
 try:
-    from segmenteverygrain import (
+    from core.segment_core import (
         create_labeled_image,
         collect_polygon_from_mask,
         plot_image_w_colorful_grains,
@@ -93,7 +94,7 @@ try:
     PROJECT1_AVAILABLE = True
 except ImportError as e:
     PROJECT1_AVAILABLE = False
-    print(f"Project one functions unavailable: {e}")
+    print(f"Core segmentation functions unavailable: {e}")
 
 
 class PureMobileSAMInteractiveEnhanced:

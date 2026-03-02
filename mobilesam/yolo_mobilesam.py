@@ -73,12 +73,9 @@ class MobileSegmentationPipeline:
         if self._seg1_available:
             return
         
+        # Import core segmentation functions (migrated from segmenteverygrain)
         try:
-            project_root = Path(__file__).parent.parent
-            if str(project_root) not in sys.path:
-                sys.path.insert(0, str(project_root))
-            
-            from segmenteverygrain import (
+            from core.segment_core import (
                 create_labeled_image,
                 collect_polygon_from_mask,
                 plot_image_w_colorful_grains,
@@ -96,7 +93,7 @@ class MobileSegmentationPipeline:
                 'merge_overlapping_polygons': merge_overlapping_polygons
             }
             self._seg1_available = True
-            print("segmenteverygrain module loaded successfully")
+            print("Core segmentation functions loaded successfully")
             
         except ImportError as e:
             self._seg1_available = False

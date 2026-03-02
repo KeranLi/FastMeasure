@@ -518,6 +518,29 @@ Contributions are welcome! If you have improvement suggestions or find issues, y
 
 This project builds upon the excellent work of **[segmenteverygrain](https://github.com/zsylvester/segmenteverygrain)** by Zoltán Sylvester and colleagues. We thank them for pioneering the application of SAM in sedimentary grain segmentation and for making their work open-source.
 
+### Code Migration Notice
+
+FastMeasure has migrated core segmentation functionality from segmenteverygrain to `core/segment_core.py`, making the project fully independent. The segmenteverygrain source code has been removed from this repository but remains available in Git history.
+
+**Migrated functions** (now in `core/segment_core.py`):
+
+- `create_labeled_image()` - Create labeled grain masks
+- `plot_image_w_colorful_grains()` - Visualize grains with colors
+- `plot_grain_axes_and_centroids()` - Plot grain orientation axes
+- `find_connected_components()` - Detect overlapping grains
+- `merge_overlapping_polygons()` - Merge overlapping segmentations
+- `collect_polygon_from_mask()` - Extract polygons from masks
+- `load_image()` - Image loading utilities
+- `polygons_to_grains()` - Convert polygons to grain objects
+- `save_grains()` - Save grain data
+
+**To view original segmenteverygrain code:**
+```bash
+git show HEAD~1:segmenteverygrain/
+# or restore temporarily:
+git checkout HEAD~1 -- segmenteverygrain/
+```
+
 Key improvements in FastMeasure:
 - **YOLO-based Detection**: Replaced patch-based U-Net with YOLO for real-time grain detection
 - **Multiple SAM Backends**: Support for both FastSAM (speed) and MobileSAM (precision)
