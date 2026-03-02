@@ -88,8 +88,7 @@ def build_executable():
         "--add-data", f"fastsam{sep}fastsam",
         "--add-data", f"mobilesam{sep}mobilesam",
         "--add-data", f"geometry{sep}geometry",
-        "--add-data", f"segmenteverygrain{sep}segmenteverygrain",
-        "--add-data", f"configs{sep}configs",
+                "--add-data", f"configs{sep}configs",
         
         
         "--add-data", f"run.py{sep}.",
@@ -122,9 +121,7 @@ def build_executable():
         "--hidden-import", "matplotlib.backends.backend_tkagg",
         "--hidden-import", "segment_anything",
         "--hidden-import", "mobile_sam",
-        "--hidden-import", "segmenteverygrain",
-        "--hidden-import", "segmenteverygrain.predict",
-        # Collect all packages
+                        # Collect all packages
         "--collect-all", "ultralytics",
         "--collect-all", "torch",
         # Collect cv2 data files (includes opencv dependencies)

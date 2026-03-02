@@ -4,6 +4,43 @@ All development progress, feature updates and architecture changes of this proje
 
 ---
 
+## 2026-03-02 - Remove segmenteverygrain Dependency
+
+- **Modifier:** Core Team
+- **Modification Type:** Architecture Refactoring
+- **Involved Files:** `core/segment_core.py`, `fastsam_interactive.py`, `mobilesam_interactive.py`, `fastsam/yolo_fastsam.py`, `mobilesam/yolo_mobilesam.py`, `README.md`
+
+**Specific Content:**
+- **Complete Independence**: Removed `segmenteverygrain/` folder entirely, making FastMeasure fully independent from the external dependency
+- **Core Function Migration**: Migrated all used functions from segmenteverygrain to new `core/segment_core.py` module:
+  - `create_labeled_image()` - Create labeled grain masks
+  - `plot_image_w_colorful_grains()` - Visualize grains with colors  
+  - `plot_grain_axes_and_centroids()` - Plot grain orientation axes
+  - `find_connected_components()` - Detect overlapping grains
+  - `merge_overlapping_polygons()` - Merge overlapping segmentations
+  - `collect_polygon_from_mask()` - Extract polygons from masks
+  - `load_image()` - Image loading utilities
+  - `polygons_to_grains()` - Convert polygons to grain objects
+  - `save_grains()` - Save grain data
+- **Import Updates**: Updated all import statements across the codebase:
+  - `fastsam_interactive.py` & `fastsam_interactive_macos.py`
+  - `mobilesam_interactive.py` & `mobilesam_interactive_macos.py`
+  - `fastsam/yolo_fastsam.py`
+  - `mobilesam/yolo_mobilesam.py`
+- **Git History Preserved**: Original segmenteverygrain code remains accessible via Git history for reference
+
+**Benefits:**
+- Reduced external dependencies
+- Simplified project structure
+- Easier maintenance and deployment
+- No licensing concerns from bundled external code
+
+**Notes:**
+- Original segmenteverygrain code can be restored via: `git checkout HEAD~1 -- segmenteverygrain/`
+- All migrated functions maintain API compatibility with original implementations
+
+---
+
 ## [Unreleased] Early Development Phase
 
 - **Modifier:** Core Team

@@ -52,8 +52,7 @@ def build_app():
         "--add-data", f"../fastsam{sep}fastsam",
         "--add-data", f"../mobilesam{sep}mobilesam", 
         "--add-data", f"../geometry{sep}geometry",
-        "--add-data", f"../segmenteverygrain{sep}segmenteverygrain",
-        # 数据文件 - 配置文件
+                # 数据文件 - 配置文件
         "--add-data", f"../configs{sep}configs",
         
         

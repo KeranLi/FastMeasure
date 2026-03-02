@@ -97,10 +97,10 @@ class MobileSegmentationPipeline:
             
         except ImportError as e:
             self._seg1_available = False
-            print(f"segmenteverygrain import failed: {e}")
+            print(f"Core segmentation functions import failed: {e}")
         except Exception as e:
             self._seg1_available = False
-            print(f"segmenteverygrain loading error: {e}")
+            print(f"Core segmentation functions loading error: {e}")
     
     def mobile_sam_segmentation(self, 
                           image: np.ndarray,

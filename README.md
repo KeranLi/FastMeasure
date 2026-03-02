@@ -436,6 +436,7 @@ results/
 │
 ├── core/                       # Core module (new)
 │   ├── __init__.py             # Core module initialization
+│   ├── segment_core.py         # Core segmentation functions (migrated from segmenteverygrain)
 │   ├── seg_tools.py            # Shared tool functions
 │   ├── seg_optimize.py         # Shared segmentation optimization
 │   ├── cli_base.py             # Shared CLI functions
