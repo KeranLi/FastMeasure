@@ -103,8 +103,10 @@ The system can calculate various grain geometric parameters:
 - **Advanced Parameters**: Fractal Dimension, Angularity
 
 ### 5. Flexible Configuration System
-- `configs/fastsam.yaml` / `configs/mobilesam.yaml`: Main configuration files (model paths, processing parameters, output settings)
-- `configs/geometry.yaml`: Geometric parameter configuration file (custom CSV export fields)
+- `configs/fastsam.yaml` / `configs/mobilesam.yaml`: Main configuration files
+- `configs/fastsam_smooth.yaml`: Smooth edge configuration (reduces jagged edges)
+- `configs/fastsam_ultra_smooth.yaml`: Maximum smoothing for best edge quality
+- `configs/geometry.yaml`: Geometric parameter configuration file
 
 ## Installation
 
@@ -206,7 +208,11 @@ python run_fastsam.py --help
 
 3. Install dependencies:
     ```bash
-    pip install torch torchvision opencv-python pandas matplotlib numpy pyyaml ultralytics shapely scikit-image pillow
+    # Install PyTorch 2.3+ (supports NumPy 2.x)
+    pip install torch>=2.3.0 torchvision>=0.18.0
+    
+    # Install other dependencies
+    pip install opencv-python pandas matplotlib numpy pyyaml ultralytics>=8.2.0 shapely scikit-image pillow
     
     # MobileSAM interactive mode requires additional installation
     pip install mobile_sam
@@ -253,6 +259,18 @@ models/
 ├── best_yolo_20260107.pt    # YOLO detection model
 ├── FastSAM-s.pt             # FastSAM model
 └── mobile_sam.pt            # MobileSAM model (optional)
+```
+
+### Smooth Edge Configurations
+
+For jagged edge issues, use optimized configurations:
+
+```bash
+# Standard smooth (balanced)
+python fastsam_interactive.py --config configs/fastsam_smooth.yaml
+
+# Ultra smooth (maximum smoothing, slower)
+python fastsam_interactive.py --config configs/fastsam_ultra_smooth.yaml
 ```
 
 ## Usage Guide
