@@ -170,13 +170,13 @@ class PureFastSAMInteractiveEnhanced:
         if GEOMETRY_AVAILABLE:
             try:
                 # Modification: adjust config file path
-                config_path = Path(__file__).parent / "geometry_config.yaml"
+                config_path = Path(__file__).parent / "configs" / "geometry.yaml"
                 if config_path.exists():
                     self.geometry_config = load_geometry_config(str(config_path))
                     print("Geometry configuration loaded successfully")
                 else:
                     # Try to find in fastsam subdirectory
-                    alt_config_path = Path(__file__).parent / "fastsam" / "geometry_config.yaml"
+                    alt_config_path = Path(__file__).parent / "configs" / "geometry.yaml"
                     if alt_config_path.exists():
                         self.geometry_config = load_geometry_config(str(alt_config_path))
                         print("Successfully loaded geometry configuration from fastsam subdirectory")

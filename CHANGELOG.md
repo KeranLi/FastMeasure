@@ -23,10 +23,10 @@ All development progress, feature updates and architecture changes of this proje
 
 - **Modifier:** Core Team
 - **Modification Type:** New Feature
-- **Involved Files:** `gui_launcher.py`, `build_exe.py`, `core/model_manager.py`, `.exe_config.yaml`
+- **Involved Files:** `utils/gui_launcher.py`, `application/build_exe.py`, `core/model_manager.py`, `.exe_config.yaml`
 
 **Specific Content:**
-- **GUI Launcher**: Added user-friendly graphical interface (`gui_launcher.py`) for non-technical users:
+- **GUI Launcher**: Added user-friendly graphical interface (`utils/gui_launcher.py`) for non-technical users:
   - One-click image/folder selection
   - Visual mode selection (FastSAM/MobileSAM, Auto/Batch/Interactive)
   - Real-time progress display with log output
@@ -57,7 +57,7 @@ All development progress, feature updates and architecture changes of this proje
 
 - **Modifier:** Core Team
 - **Modification Type:** Feature Addition + Documentation
-- **Involved Files:** `core/yolo_trainer.py`, `train_yolo.py`, `README.md`
+- **Involved Files:** `core/yolo_trainer.py`, `utils/train_yolo.py`, `README.md`
 
 **Specific Content:**
 - **YOLO Fine-tuning Module**: Added `core/yolo_trainer.py` providing YOLO model fine-tuning capabilities similar to segmenteverygrain's U-Net fine-tuning:
@@ -65,7 +65,7 @@ All development progress, feature updates and architecture changes of this proje
   - Auto-dataset generation from interactive segmentation results
   - Support for training from scratch or fine-tuning existing models
   - Built-in data augmentation and automatic train/val/test splitting
-  - CLI script `train_yolo.py` for command-line usage
+  - CLI script `utils/train_yolo.py` for command-line usage
 - **Acknowledgment**: Added clear acknowledgment of [segmenteverygrain](https://github.com/zsylvester/segmenteverygrain) by Zoltán Sylvester as the inspiration for this project.
 - **Comparison Table**: Added detailed feature comparison table highlighting key improvements:
   - YOLO-based detection vs U-Net (patch-based)
@@ -89,7 +89,7 @@ All development progress, feature updates and architecture changes of this proje
 **Specific Content:**
 - **Feature Release**: Includes core functions such as single image processing, scale bar detection, grain segmentation, and grain labeling.
 - **Model Integration**: Completed integration of YOLO and SAM models for efficient rock grain segmentation.
-- **Config and Output**: Supports adjusting model paths and parameters through `config.yaml`; output files include segmentation images, labeled images, CSV statistics and JSON summaries.
+- **Config and Output**: Supports adjusting model paths and parameters through `configs/fastsam.yaml`; output files include segmentation images, labeled images, CSV statistics and JSON summaries.
 - **Known Issues**: Label overlap in extreme cases; performance optimization needed for large image batches; EfficientSAM3 has weak Windows support due to Triton architecture limitations.
 
 ---
@@ -122,11 +122,11 @@ All development progress, feature updates and architecture changes of this proje
 
 - **Modifier:** Li Keran
 - **Modification Type:** Model Adaptation and Logic Modification
-- **Involved Files:** `rock.py`, `rock_new.py`, `run.py`, `config.yaml`
+- **Involved Files:** `rock.py`, `rock_new.py`, `run.py`, `configs/fastsam.yaml`
 
 **Specific Content:**
 - Adapted MobileSAM model in `rock_new.py`, and synchronized modifications to `run.py` calling logic.
-- Updated corresponding config parameters in `config.yaml`.
+- Updated corresponding config parameters in `configs/fastsam.yaml`.
 
 ---
 
@@ -182,7 +182,7 @@ All development progress, feature updates and architecture changes of this proje
 
 - **Modifier:** Li Keran
 - **Modification Type:** Parameterization Feature Enhancement
-- **Involved Files:** `geometry_config.yaml`
+- **Involved Files:** `configs/geometry.yaml`
 
 **Specific Content:**
 - Added function to dynamically select geometric parameter calculation items based on YAML config.
@@ -193,10 +193,10 @@ All development progress, feature updates and architecture changes of this proje
 
 - **Modifier:** Li Keran
 - **Modification Type:** Config Logic Optimization
-- **Involved Files:** `geometry_config.yaml`, `geometry/config_loader.py`, `export_csv.py`, `fastsam/rock_fastsam_system.py`
+- **Involved Files:** `configs/geometry.yaml`, `geometry/config_loader.py`, `export_csv.py`, `fastsam/rock_fastsam_system.py`
 
 **Specific Content:**
-- Optimized geometric parameter config function, implemented final CSV export field determination based on `geometry_config.yaml`.
+- Optimized geometric parameter config function, implemented final CSV export field determination based on `configs/geometry.yaml`.
 
 ---
 
@@ -325,17 +325,17 @@ All optimizations maintain backward compatibility:
 
 - **Modifier:** AI Assistant
 - **Modification Type:** Bug Fixes
-- **Involved Files:** `run_mobilesam.py`, `run_fastsam.py`, `config_mobilesam.yaml`, `mobilesam_interactive.py`, `fastsam_interactive.py`
+- **Involved Files:** `run_mobilesam.py`, `run_fastsam.py`, `configs/mobilesam.yaml`, `mobilesam_interactive.py`, `fastsam_interactive.py`
 
 ### Fixes
 
 #### 1. Default Config File Fix
-- **Issue**: `run.py mobilesam` used wrong default config file (`config.yaml` instead of `config_mobilesam.yaml`)
+- **Issue**: `run.py mobilesam` used wrong default config file (`configs/fastsam.yaml` instead of `configs/mobilesam.yaml`)
 - **Solution**: Added `parser.set_defaults(config=DEFAULT_CONFIG)` in both startup scripts
 - **Result**: Each mode now uses correct config file automatically
 
 #### 2. Model Path Fix
-- **Issue**: `config_mobilesam.yaml` used incorrect relative paths (`../models/`) and wrong YOLO model filename (`best.pt`)
+- **Issue**: `configs/mobilesam.yaml` used incorrect relative paths (`../models/`) and wrong YOLO model filename (`best.pt`)
 - **Solution**: Updated to correct paths (`./models/`) and correct filename (`best_yolo_20260107.pt`)
 - **Result**: Models load correctly on all platforms
 
@@ -349,7 +349,7 @@ All optimizations maintain backward compatibility:
 
 #### 4. CPU Mode Default
 - **Issue**: Default config used CUDA (`device: cuda`) which fails on Mac without NVIDIA GPU
-- **Solution**: Changed default to `device: cpu` in `config_mobilesam.yaml`
+- **Solution**: Changed default to `device: cpu` in `configs/mobilesam.yaml`
 - **Result**: Works out of the box on Mac and CPU-only systems
 
 ---
@@ -358,7 +358,7 @@ All optimizations maintain backward compatibility:
 
 - **Modifier:** AI Assistant
 - **Modification Type:** Architecture Improvement
-- **Involved Files:** `config.yaml`, `config_mobilesam.yaml`, `fastsam/rock_fastsam_system.py`, `mobilesam/rock_mobilesam_system.py`, `fastsam_interactive.py`, `mobilesam_interactive.py`
+- **Involved Files:** `configs/fastsam.yaml`, `configs/mobilesam.yaml`, `fastsam/rock_fastsam_system.py`, `mobilesam/rock_mobilesam_system.py`, `fastsam_interactive.py`, `mobilesam_interactive.py`
 
 ### Problem
 Multiple scattered output directories in project root:
@@ -391,7 +391,7 @@ results/
 #### 1. Configuration Files
 - Added `mode_subdir` and `type_subdir` options to output config
 - Added `log_subdir` to logging config
-- Updated both `config.yaml` and `config_mobilesam.yaml`
+- Updated both `configs/fastsam.yaml` and `configs/mobilesam.yaml`
 
 #### 2. System Files
 - Modified `rock_fastsam_system.py` and `rock_mobilesam_system.py`

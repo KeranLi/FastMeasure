@@ -64,7 +64,7 @@ class RockMobileSystem:
     
     VERSION = "1.1.0"
     
-    def __init__(self, config_path: str = "config.yaml"):
+    def __init__(self, config_path: str = "configs/mobilesam.yaml"):
         """
         Initialize MobileSAM system
         
@@ -79,7 +79,7 @@ class RockMobileSystem:
         self.config = self._load_config(config_path)
         
         # New: Load geometry configuration
-        self.geometry_config = load_geometry_config("geometry_config.yaml")
+        self.geometry_config = load_geometry_config("configs/geometry.yaml")
         
         # Set up unified output directory structure
         # results/{mode}/{type}/ (e.g., results/mobilesam/auto/)

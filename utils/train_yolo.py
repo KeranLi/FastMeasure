@@ -7,13 +7,13 @@ similar to segmenteverygrain's U-Net fine-tuning capability.
 
 Quick Start:
     # Fine-tune from interactive segmentation results
-    python train_yolo.py --mode quick --input results/mobilesam/interactive/
+    python utils/train_yolo.py --mode quick --input results/mobilesam/interactive/
     
     # Train with existing YOLO-format dataset
-    python train_yolo.py --mode train --data path/to/dataset.yaml
+    python utils/train_yolo.py --mode train --data path/to/dataset.yaml
     
     # Fine-tune from existing model with custom settings
-    python train_yolo.py --mode quick --input results/interactive/ \\
+    python utils/train_yolo.py --mode quick --input results/interactive/ \\
                          --base ./models/best_yolo_20260107.pt \\
                          --epochs 50 --imgsz 1024
 
@@ -25,7 +25,7 @@ import argparse
 from pathlib import Path
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.yolo_trainer import YOLOFineTuner
 
@@ -37,20 +37,20 @@ def main():
         epilog="""
 Examples:
   # Quick fine-tune from interactive results (recommended)
-  python train_yolo.py --mode quick --input results/mobilesam/interactive/
+  python utils/train_yolo.py --mode quick --input results/mobilesam/interactive/
   
   # Train with more epochs
-  python train_yolo.py --mode quick --input results/interactive/ --epochs 100
+  python utils/train_yolo.py --mode quick --input results/interactive/ --epochs 100
   
   # Use larger model for better accuracy
-  python train_yolo.py --mode quick --input results/interactive/ --base yolov8m.pt
+  python utils/train_yolo.py --mode quick --input results/interactive/ --base yolov8m.pt
   
   # Fine-tune from your existing model
-  python train_yolo.py --mode quick --input results/interactive/ \\
+  python utils/train_yolo.py --mode quick --input results/interactive/ \\
                        --base ./models/best_yolo_20260107.pt --epochs 50
   
   # Train with custom dataset (YOLO format)
-  python train_yolo.py --mode train --data ./my_dataset/dataset.yaml
+  python utils/train_yolo.py --mode train --data ./my_dataset/dataset.yaml
         """
     )
     
@@ -137,12 +137,12 @@ Examples:
     # Validate arguments
     if args.mode == "quick" and not args.input:
         print("\nError: --input is required for 'quick' mode")
-        print("Example: python train_yolo.py --mode quick --input results/mobilesam/interactive/")
+        print("Example: python utils/train_yolo.py --mode quick --input results/mobilesam/interactive/")
         return 1
     
     if args.mode == "train" and not args.data:
         print("\nError: --data is required for 'train' mode")
-        print("Example: python train_yolo.py --mode train --data ./my_dataset/dataset.yaml")
+        print("Example: python utils/train_yolo.py --mode train --data ./my_dataset/dataset.yaml")
         return 1
     
     # Initialize trainer
@@ -192,7 +192,7 @@ Examples:
         print("-" * 70)
         print("1. Copy the best model to your models directory:")
         print(f"   cp {results['best_model']} ./models/my_finetuned_model.pt")
-        print("\n2. Update config.yaml to use your fine-tuned model:")
+        print("\n2. Update configs/fastsam.yaml to use your fine-tuned model:")
         print("   model_paths:")
         print("     yolo: \"./models/my_finetuned_model.pt\"")
         print("\n3. Run FastMeasure with your new model:")

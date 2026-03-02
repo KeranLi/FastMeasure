@@ -19,7 +19,7 @@ class SimpleArgs:
         self.input: Optional[str] = None
         self.batch: bool = False
         self.interactive: bool = False
-        self.config: str = "config.yaml"
+        self.config: str = "configs/fastsam.yaml"
         self.conf: Optional[float] = None
         self.min_area: Optional[int] = None
         self.min_bbox_area: Optional[int] = None
@@ -72,7 +72,7 @@ def create_base_parser(description: str, epilog: str, version: str) -> argparse.
     parser.add_argument(
         "--config", "-c",
         type=str,
-        default="config.yaml",
+        default="configs/fastsam.yaml",
         help="Config file path"
     )
     

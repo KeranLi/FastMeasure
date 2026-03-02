@@ -84,7 +84,7 @@ class RockUltraSystem:
     
     VERSION = "1.0.0"
     
-    def __init__(self, config_path: str = "config.yaml"):
+    def __init__(self, config_path: str = "configs/fastsam.yaml"):
         """
         Initialize UltraFastSAM system (supports GUI interactive mode)
         
@@ -100,7 +100,7 @@ class RockUltraSystem:
 
         # Read geometry_config
         try:
-            self.geometry_config = load_geometry_config("geometry_config.yaml")
+            self.geometry_config = load_geometry_config("configs/geometry.yaml")
             print("Geometry configuration loaded successfully")
         except Exception as e:
             self.geometry_config = {}

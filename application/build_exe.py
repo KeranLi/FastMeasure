@@ -74,7 +74,7 @@ def build_executable():
     cmd = [
         sys.executable, "-m", "PyInstaller",
         # Main script
-        "gui_launcher.py",
+        "utils/gui_launcher.py",
         # Output name
         "--name", "FastMeasure",
         # Windowed mode (no console)
@@ -89,13 +89,13 @@ def build_executable():
         "--add-data", f"mobilesam{sep}mobilesam",
         "--add-data", f"geometry{sep}geometry",
         "--add-data", f"segmenteverygrain{sep}segmenteverygrain",
-        "--add-data", f"config.yaml{sep}.",
-        "--add-data", f"config_mobilesam.yaml{sep}.",
-        "--add-data", f"geometry_config.yaml{sep}.",
+        "--add-data", f"configs{sep}configs",
+        
+        
         "--add-data", f"run.py{sep}.",
         "--add-data", f"run_fastsam.py{sep}.",
         "--add-data", f"run_mobilesam.py{sep}.",
-        "--add-data", f"train_yolo.py{sep}.",
+        "--add-data", f"utils{sep}utils",
         # Hidden imports for core modules
         "--hidden-import", "core",
         "--hidden-import", "core.seg_tools",

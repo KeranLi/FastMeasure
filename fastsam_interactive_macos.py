@@ -272,7 +272,7 @@ class PureMobileSAMInteractiveEnhanced:
         self.geometry_config = None
         if GEOMETRY_AVAILABLE:
             try:
-                config_path = Path(__file__).parent.parent / "geometry_config.yaml"
+                config_path = Path(__file__).parent / "configs" / "geometry.yaml"
                 if config_path.exists():
                     self.geometry_config = load_geometry_config(str(config_path))
                     print("✅ geometry配置加载成功")
