@@ -28,11 +28,6 @@ print(" skimage related modules imported")
 import os
 from pathlib import Path
 
-# Get project one module path
-current_file = Path(__file__).resolve()
-project_root = current_file.parent.parent
-project1_dir = project_root / "segmenteverygrain"
-
 # Import core segmentation functions (migrated from segmenteverygrain)
 try:
     from core.segment_core import (
