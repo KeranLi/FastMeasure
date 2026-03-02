@@ -1,0 +1,135 @@
+# FastSAM Rock Grain Auto Segmentation System Configuration
+
+# ===== Model Path Configuration =====
+model_paths:
+  yolo: "./models/best_yolo_20260107.pt"
+  fastsam: "./models/FastSAM-s.pt"
+  device: "cpu"
+
+# ===== Scale Bar Detection Configuration =====
+scale_detection:
+  enabled: true
+  known_length_um: 1000.0
+  
+  detection_params:
+    red_lower1: [0, 120, 120]
+    red_upper1: [10, 255, 255]
+    red_lower2: [160, 120, 120]
+    red_upper2: [180, 255, 255]
+    crop_height: 220
+    crop_width: 600
+    search_margin: 80
+    min_aspect_ratio: 8
+    min_horizontal_score: 0.6
+
+# ===== Processing Parameters =====
+processing:
+  yolo_confidence: 0.25
+  min_area: 30
+  min_bbox_area: 20
+  remove_edge_grains: false
+  plot_results: true
+  performance_monitoring: true
+
+# ===== Output Configuration =====
+output:
+  # Unified output root directory
+  root_dir: "results"
+  # Subdirectory for this mode (fastsam/mobilesam)
+  mode_subdir: "fastsam"
+  # Subdirectory for processing type (auto/interactive)
+  type_subdir: "auto"
+  # Whether to create subdirectories per image
+  create_subdirs: true
+  save_visualization: true
+  save_mask: true
+  save_statistics: true
+  save_summary: true
+  save_performance: true
+  save_debug_info: false
+
+# ===== Batch Processing =====
+batch_processing:
+  supported_formats: [".tif", ".tiff", ".jpg", ".jpeg", ".png", ".bmp"]
+  skip_corrupted: true
+  max_workers: 1
+  log_errors: true
+
+# ===== Logging =====
+logging:
+  level: "INFO"
+  save_to_file: true
+  show_in_console: true
+  log_format: "%(asctime)s - %(levelname)s - %(message)s"
+  # Log subdirectory under results/logs
+  log_subdir: "fastsam"
+
+# ===== Grain Labeling =====
+grain_labeling:
+  enabled: true
+  font_size: 11
+  text_color: "yellow"
+  bg_color: ""
+  show_area: true
+  max_labels: 1000
+  min_area: 0
+  text_outline: true
+  outline_color: "black"
+  outline_width: 2.0
+
+# ===== FastSAM Engine Parameters =====
+fastsam_params:
+  global:
+    imgsz: 1024
+    conf: 0.15
+    iou: 0.3
+    retina_masks: true
+  local:
+    imgsz: 512
+    conf: 0.1
+    iou: 0.2
+  small:
+    imgsz: 256
+    conf: 0.05
+    iou: 0.1
+  filter:
+    min_area: 10
+    max_area_ratio: 0.8
+    min_solidity: 0.3
+    min_extent: 0.1
+  morphology:
+    small_kernel: [3, 3]
+    medium_kernel: [5, 5]
+    large_kernel: [7, 7]
+    closing_iterations: 1
+    opening_iterations: 1
+
+# ===== Post-processing =====
+postprocessing:
+  smart_postprocess:
+    enabled: true
+    min_area: 30
+    iou_threshold: 0.5
+    simplify_tolerance: 1.0
+    buffer_distance: 0.5
+  overlap_handling:
+    merge_threshold: 0.7
+    split_connected: true
+    remove_small: true
+  morphological_optimization:
+    enabled: true
+    buffer_size: 0.5
+    simplify: true
+
+# ===== Performance =====
+performance:
+  memory:
+    max_image_size_mb: 50
+    use_memory_mapping: false
+  cache:
+    enabled: true
+    cache_dir: "results/temp/cache"
+    max_cache_size_mb: 1000
+  parallel:
+    enabled: false
+    max_workers: 2
