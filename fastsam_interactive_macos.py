@@ -221,8 +221,9 @@ except ImportError as e:
     GEOMETRY_AVAILABLE = False
     print(f"⚠️ geometry模块不可用: {e}")
 
+# Import core segmentation functions (migrated from segmenteverygrain)
 try:
-    from segmenteverygrain import (
+    from core.segment_core import (
         create_labeled_image,
         collect_polygon_from_mask,
         plot_image_w_colorful_grains,
@@ -233,7 +234,7 @@ try:
     PROJECT1_AVAILABLE = True
 except ImportError as e:
     PROJECT1_AVAILABLE = False
-    print(f"⚠️ 项目一函数不可用: {e}")
+    print(f"⚠️ Core segmentation functions unavailable: {e}")
 
 
 # ==================== 主类（修改文件选择部分） ====================
@@ -272,7 +273,7 @@ class PureMobileSAMInteractiveEnhanced:
         self.geometry_config = None
         if GEOMETRY_AVAILABLE:
             try:
-                config_path = Path(__file__).parent.parent / "geometry_config.yaml"
+                config_path = Path(__file__).parent / "configs" / "geometry.yaml"
                 if config_path.exists():
                     self.geometry_config = load_geometry_config(str(config_path))
                     print("✅ geometry配置加载成功")

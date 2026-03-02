@@ -54,9 +54,9 @@ def build_app():
         "--add-data", f"../geometry{sep}geometry",
         "--add-data", f"../segmenteverygrain{sep}segmenteverygrain",
         # 数据文件 - 配置文件
-        "--add-data", f"../config.yaml{sep}.",
-        "--add-data", f"../config_mobilesam.yaml{sep}.",
-        "--add-data", f"../geometry_config.yaml{sep}.",
+        "--add-data", f"../configs{sep}configs",
+        
+        
         # 数据文件 - 启动脚本
         "--add-data", f"main_launcher.py{sep}.",
         "--add-data", f"gui_interactive.py{sep}.",

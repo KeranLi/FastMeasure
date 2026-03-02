@@ -33,12 +33,9 @@ current_file = Path(__file__).resolve()
 project_root = current_file.parent.parent
 project1_dir = project_root / "segmenteverygrain"
 
-# Add to Python path
-if str(project1_dir) not in sys.path:
-    sys.path.insert(0, str(project1_dir))
-
+# Import core segmentation functions (migrated from segmenteverygrain)
 try:
-    from segmenteverygrain import (
+    from core.segment_core import (
         create_labeled_image,
         collect_polygon_from_mask,
         plot_image_w_colorful_grains,
@@ -47,9 +44,9 @@ try:
         merge_overlapping_polygons
     )
     PROJECT1_AVAILABLE = True
-    print(" Successfully imported calculation functions from segment file")
+    print(" Successfully imported core segmentation functions")
 except ImportError as e:
-    print(f" Failed to import calculation functions from segment file: {e}")
+    print(f" Failed to import core segmentation functions: {e}")
     sys.exit(1)
 
 # Import UltraFastSAM engine

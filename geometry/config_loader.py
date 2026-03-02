@@ -4,7 +4,7 @@ from typing import Dict, Any
 import yaml
 
 
-def load_geometry_config(config_path: str = "geometry_config.yaml") -> Dict[str, Any]:
+def load_geometry_config(config_path: str = "configs/geometry.yaml") -> Dict[str, Any]:
     """
     Read geometry parameter configuration file geometry_config.yaml
     """

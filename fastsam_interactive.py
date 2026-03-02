@@ -65,17 +65,12 @@ print("=" * 60)
 import sys
 from pathlib import Path
 
-# Get project one module path
-current_file = Path(__file__).resolve()
-project_root = current_file.parent  # Note: only one parent needed as file is in project root
-project1_dir = project_root / "segmenteverygrain"
+# Get project root path
+project_root = Path(__file__).parent
 
-# Add to Python path
-if str(project1_dir) not in sys.path:
-    sys.path.insert(0, str(project1_dir))
-
+# Import core segmentation functions (migrated from segmenteverygrain)
 try:
-    from segmenteverygrain import (
+    from core.segment_core import (
         create_labeled_image,
         plot_image_w_colorful_grains,
         plot_grain_axes_and_centroids,
@@ -83,11 +78,10 @@ try:
         merge_overlapping_polygons
     )
     PROJECT1_AVAILABLE = True
-    print("Successfully imported project one calculation functions")
-    print(f"   Module location: {project1_dir}")
+    print("Successfully imported core segmentation functions")
 except ImportError as e:
-    print(f"Failed to import project one calculation functions: {e}")
-    print("Program requires project one functions to run")
+    print(f"Failed to import core segmentation functions: {e}")
+    print("Program requires core segmentation functions to run")
     sys.exit(1)
 
 # Import geometry calculation modules
@@ -170,13 +164,13 @@ class PureFastSAMInteractiveEnhanced:
         if GEOMETRY_AVAILABLE:
             try:
                 # Modification: adjust config file path
-                config_path = Path(__file__).parent / "geometry_config.yaml"
+                config_path = Path(__file__).parent / "configs" / "geometry.yaml"
                 if config_path.exists():
                     self.geometry_config = load_geometry_config(str(config_path))
                     print("Geometry configuration loaded successfully")
                 else:
                     # Try to find in fastsam subdirectory
-                    alt_config_path = Path(__file__).parent / "fastsam" / "geometry_config.yaml"
+                    alt_config_path = Path(__file__).parent / "configs" / "geometry.yaml"
                     if alt_config_path.exists():
                         self.geometry_config = load_geometry_config(str(alt_config_path))
                         print("Successfully loaded geometry configuration from fastsam subdirectory")

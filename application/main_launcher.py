@@ -23,7 +23,7 @@ def run_fastsam_auto(image_path, batch=False):
     try:
         from fastsam.rock_fastsam_system import RockUltraSystem
         
-        system = RockUltraSystem("config.yaml")
+        system = RockUltraSystem("configs/fastsam.yaml")
         if not system.initialize_models():
             print("模型初始化失败")
             return 1
@@ -49,7 +49,7 @@ def run_mobilesam_auto(image_path, batch=False):
     try:
         from mobilesam.rock_mobilesam_system import RockMobileSystem
         
-        system = RockMobileSystem("config_mobilesam.yaml")
+        system = RockMobileSystem("configs/mobilesam.yaml")
         if not system.initialize_models():
             print("模型初始化失败")
             return 1
@@ -80,10 +80,10 @@ def run_interactive(model, image_path):
     try:
         if model == "fastsam":
             from fastsam.rock_fastsam_system import RockUltraSystem
-            system = RockUltraSystem("config.yaml")
+            system = RockUltraSystem("configs/fastsam.yaml")
         else:
             from mobilesam.rock_mobilesam_system import RockMobileSystem
-            system = RockMobileSystem("config_mobilesam.yaml")
+            system = RockMobileSystem("configs/mobilesam.yaml")
         
         print(f"\nInitializing {model.upper()} system...")
         if not system.initialize_models():

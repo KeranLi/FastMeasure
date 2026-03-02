@@ -49,7 +49,7 @@ Similar to segmenteverygrain's U-Net fine-tuning, FastMeasure supports **YOLO mo
 
 ```bash
 # Quick fine-tune from interactive segmentation results
-python train_yolo.py --mode quick --input results/mobilesam/interactive/
+python utils/train_yolo.py --mode quick --input results/mobilesam/interactive/
 
 # The fine-tuned model can then be used for better detection
 ```
@@ -82,8 +82,8 @@ The system can calculate various grain geometric parameters:
 - **Advanced Parameters**: Fractal Dimension, Angularity
 
 ### 5. Flexible Configuration System
-- `config.yaml` / `config_mobilesam.yaml`: Main configuration files (model paths, processing parameters, output settings)
-- `geometry_config.yaml`: Geometric parameter configuration file (custom CSV export fields)
+- `configs/fastsam.yaml` / `configs/mobilesam.yaml`: Main configuration files (model paths, processing parameters, output settings)
+- `configs/geometry.yaml`: Geometric parameter configuration file (custom CSV export fields)
 
 ## Installation
 
@@ -154,7 +154,7 @@ python run.py fastsam --input path/to/folder --batch
 
 #### 3. Use Custom Configuration
 ```bash
-python run_fastsam.py --config custom_config.yaml --input image.tif
+python run_fastsam.py --config configs/fastsam.yaml --input image.tif
 ```
 
 #### 4. Adjust Processing Parameters
@@ -231,7 +231,7 @@ The system is fully compatible with macOS. However, please note:
 
 ## Model Training
 
-FastMeasure includes a **YOLO Fine-tuning Module** (`train_yolo.py`) that allows you to improve detection accuracy on your specific rock types, similar to segmenteverygrain's U-Net fine-tuning capability.
+FastMeasure includes a **YOLO Fine-tuning Module** (`utils/train_yolo.py`) that allows you to improve detection accuracy on your specific rock types, similar to segmenteverygrain's U-Net fine-tuning capability.
 
 ### Why Fine-tune?
 
@@ -249,11 +249,11 @@ python run.py mobilesam --interactive
 # Segment several images and save the results
 
 # Step 2: Fine-tune YOLO using those results
-python train_yolo.py --mode quick --input results/mobilesam/interactive/ --epochs 50
+python utils/train_yolo.py --mode quick --input results/mobilesam/interactive/ --epochs 50
 
 # Step 3: Use the fine-tuned model
 cp training_outputs/runs/train_*/weights/best.pt ./models/my_finetuned_yolo.pt
-# Update config.yaml: yolo: "./models/my_finetuned_yolo.pt"
+# Update configs/fastsam.yaml: yolo: "./models/my_finetuned_yolo.pt"
 ```
 
 ### Training Options
@@ -273,20 +273,20 @@ cp training_outputs/runs/train_*/weights/best.pt ./models/my_finetuned_yolo.pt
 
 ```bash
 # Fine-tune from existing model with more epochs
-python train_yolo.py --mode quick \
+python utils/train_yolo.py --mode quick \
                      --input results/mobilesam/interactive/ \
                      --base ./models/best_yolo_20260107.pt \
                      --epochs 100 \
                      --imgsz 1024
 
 # Use larger model for better accuracy (slower)
-python train_yolo.py --mode quick \
+python utils/train_yolo.py --mode quick \
                      --input results/interactive/ \
                      --base yolov8m.pt \
                      --epochs 50
 
 # Train with custom YOLO-format dataset
-python train_yolo.py --mode train \
+python utils/train_yolo.py --mode train \
                      --data ./my_grain_dataset/dataset.yaml \
                      --epochs 200
 ```
@@ -320,7 +320,7 @@ names: ['grain']
 
 ## Configuration File Guide
 
-### Main Configuration File (`config.yaml` / `config_mobilesam.yaml`)
+### Main Configuration File (`configs/fastsam.yaml` / `configs/mobilesam.yaml`)
 
 ```yaml
 # Model path configuration
@@ -349,11 +349,11 @@ output:
 ```
 
 **Note**: 
-- `config.yaml` is used for FastSAM mode (default: CPU)
-- `config_mobilesam.yaml` is used for MobileSAM mode (default: CPU)
+- `configs/fastsam.yaml` is used for FastSAM mode (default: CPU)
+- `configs/mobilesam.yaml` is used for MobileSAM mode (default: CPU)
 - Change `device` to `cuda` if you have NVIDIA GPU and CUDA installed
 
-### Geometric Parameter Configuration File (`geometry_config.yaml`)
+### Geometric Parameter Configuration File (`configs/geometry.yaml`)
 
 ```yaml
 grain_statistics_csv:
@@ -423,11 +423,16 @@ results/
 ├── run.py                      # Unified entry script (new)
 ├── run_fastsam.py              # FastSAM startup script
 ├── run_mobilesam.py            # MobileSAM startup script (supports interactive mode)
-├── train_yolo.py               # YOLO model training/fine-tuning script (new)
+├── utils/                      # Utility scripts folder
+│   ├── train_yolo.py           # YOLO model training/fine-tuning script
+│   ├── gui_launcher.py         # GUI launcher for desktop app
+│   ├── file_dialog.py          # Cross-platform file dialog utilities
+│   ├── grain_marker.py         # Grain labeling module
+│   └── scale_detector.py       # Scale bar detection module
 ├── mobilesam_interactive.py    # MobileSAM standalone interactive tool
-├── config.yaml                 # FastSAM configuration file
-├── config_mobilesam.yaml       # MobileSAM configuration file
-├── geometry_config.yaml        # Geometric parameter configuration file
+├── configs/fastsam.yaml            # FastSAM configuration file
+├── configs/mobilesam.yaml      # MobileSAM configuration file
+├── configs/geometry.yaml       # Geometric parameter configuration file
 │
 ├── core/                       # Core module (new)
 │   ├── __init__.py             # Core module initialization
@@ -456,8 +461,9 @@ results/
 │   ├── config_loader.py        # Config loader
 │   └── export_csv.py           # CSV export utility
 │
-├── scale_detector.py           # Scale bar detection module
-├── grain_marker.py             # Grain labeling module
+├── configs/                    # Configuration files folder
+│   ├── fastsam.yaml            # FastSAM configuration
+│   └── geometry.yaml           # Geometric parameters configuration
 ├── models/                     # Model files directory
 ├── results/                    # Default output directory
 └── Boulder_20260107/           # Test data example
@@ -512,6 +518,29 @@ Contributions are welcome! If you have improvement suggestions or find issues, y
 
 This project builds upon the excellent work of **[segmenteverygrain](https://github.com/zsylvester/segmenteverygrain)** by Zoltán Sylvester and colleagues. We thank them for pioneering the application of SAM in sedimentary grain segmentation and for making their work open-source.
 
+### Code Migration Notice
+
+FastMeasure has migrated core segmentation functionality from segmenteverygrain to `core/segment_core.py`, making the project fully independent. The segmenteverygrain source code has been removed from this repository but remains available in Git history.
+
+**Migrated functions** (now in `core/segment_core.py`):
+
+- `create_labeled_image()` - Create labeled grain masks
+- `plot_image_w_colorful_grains()` - Visualize grains with colors
+- `plot_grain_axes_and_centroids()` - Plot grain orientation axes
+- `find_connected_components()` - Detect overlapping grains
+- `merge_overlapping_polygons()` - Merge overlapping segmentations
+- `collect_polygon_from_mask()` - Extract polygons from masks
+- `load_image()` - Image loading utilities
+- `polygons_to_grains()` - Convert polygons to grain objects
+- `save_grains()` - Save grain data
+
+**To view original segmenteverygrain code:**
+```bash
+git show HEAD~1:segmenteverygrain/
+# or restore temporarily:
+git checkout HEAD~1 -- segmenteverygrain/
+```
+
 Key improvements in FastMeasure:
 - **YOLO-based Detection**: Replaced patch-based U-Net with YOLO for real-time grain detection
 - **Multiple SAM Backends**: Support for both FastSAM (speed) and MobileSAM (precision)
@@ -557,7 +586,7 @@ pyinstaller --name FastMeasure \
             --add-data "fastsam;fastsam" \
             --add-data "mobilesam;mobilesam" \
             --add-data "geometry;geometry" \
-            --add-data "config.yaml;." \
+            --add-data "configs;configs" \
             --hidden-import ultralytics \
             --hidden-import torch \
             gui_launcher.py

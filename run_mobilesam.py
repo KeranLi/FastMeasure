@@ -58,7 +58,7 @@ SYSTEM_NAME = "MobileSAM"
 VERSION = "MobileSAM Rock Grain Auto Segmentation System v3.0.0"
 DEFAULT_CONF = 0.15
 DEFAULT_OUTPUT = "results_mobilesam"
-DEFAULT_CONFIG = "config_mobilesam.yaml"
+DEFAULT_CONFIG = "configs/mobilesam.yaml"
 
 
 EPILOG = """

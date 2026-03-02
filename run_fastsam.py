@@ -38,7 +38,7 @@ SYSTEM_NAME = "FastSAM"
 VERSION = "FastSAM Rock Grain Auto Segmentation System v2.0.0"
 DEFAULT_CONF = 0.25
 DEFAULT_OUTPUT = "results_fastsam"
-DEFAULT_CONFIG = "config.yaml"
+DEFAULT_CONFIG = "configs/fastsam.yaml"
 
 
 EPILOG = """
@@ -56,7 +56,7 @@ Usage Examples:
   python run_fastsam.py --interactive [--input image_path]
   
   # Use custom config
-  python run_fastsam.py --config config.yaml --input image.tif
+  python run_fastsam.py --config configs/fastsam.yaml --input image.tif
   
   # Adjust processing parameters
   python run_fastsam.py --input image.tif --conf 0.3 --min-area 50
