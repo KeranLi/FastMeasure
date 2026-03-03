@@ -33,6 +33,37 @@ from datetime import datetime
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
 
+
+def get_resource_path(relative_path):
+    """Get absolute path to resource, works for dev and PyInstaller"""
+    # Try multiple possible locations
+    possible_paths = []
+    
+    if getattr(sys, 'frozen', False):
+        # Running in PyInstaller bundle
+        # sys._MEIPASS is the temp extraction directory
+        possible_paths.append(Path(sys._MEIPASS) / relative_path)
+        # Also try the executable's directory
+        possible_paths.append(Path(sys.executable).parent / relative_path)
+    else:
+        # Running in normal Python environment
+        possible_paths.append(Path(__file__).parent.parent / relative_path)
+    
+    # Try current working directory (for compatibility)
+    possible_paths.append(Path(relative_path))
+    
+    # Try executable's parent directory
+    possible_paths.append(Path(sys.executable).parent / relative_path)
+    
+    # Find the first existing path
+    for path in possible_paths:
+        if path.exists():
+            return path
+    
+    # If not found, return the first option (will fail with proper error message)
+    return possible_paths[0]
+
+
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -309,16 +340,6 @@ class FastMeasureGUI:
             messagebox.showerror("Error", "Selected path does not exist!")
             return
         
-        # Build command
-        cmd = [sys.executable, "run.py", model]
-        
-        if mode == "interactive":
-            cmd.append("--interactive")
-        else:
-            cmd.extend(["--input", input_path])
-            if mode == "batch":
-                cmd.append("--batch")
-        
         # Run in thread
         self.is_running = True
         self.run_btn.config(state=tk.DISABLED)
@@ -328,49 +349,237 @@ class FastMeasureGUI:
         self._log(f"Starting {model.upper()} segmentation...")
         self._log(f"Mode: {mode}, Device: {device}")
         
-        thread = threading.Thread(target=self._run_process, args=(cmd,))
+        thread = threading.Thread(target=self._run_direct, args=(model, mode, device, input_path))
         thread.daemon = True
         thread.start()
     
-    def _run_process(self, cmd):
-        """Run subprocess and capture output."""
+    def _run_direct(self, model, mode, device, input_path):
+        """Run segmentation directly (works in both dev and frozen environments)."""
+        import io
+        import contextlib
+        
         try:
-            self.process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                universal_newlines=True,
-                bufsize=1
-            )
+            # Redirect stdout to capture output
+            output_buffer = io.StringIO()
             
-            for line in iter(self.process.stdout.readline, ''):
-                if line:
-                    self.root.after(0, lambda l=line: self._log(l.strip()))
-                    # Update progress based on output
-                    if "%" in line or "progress" in line.lower():
-                        try:
-                            # Try to extract percentage
-                            import re
-                            match = re.search(r'(\d+)%', line)
-                            if match:
-                                progress = int(match.group(1))
-                                self.root.after(0, lambda p=progress: self.progress_var.set(p))
-                        except:
-                            pass
+            with contextlib.redirect_stdout(output_buffer), contextlib.redirect_stderr(output_buffer):
+                if model == "fastsam":
+                    result = self._run_fastsam(mode, device, input_path)
+                else:
+                    result = self._run_mobilesam(mode, device, input_path)
             
-            self.process.wait()
+            # Get captured output
+            output = output_buffer.getvalue()
             
-            if self.process.returncode == 0:
+            # Log output line by line
+            for line in output.split('\n'):
+                if line.strip():
+                    self.root.after(0, lambda l=line: self._log(l))
+            
+            if result == 0:
                 self.root.after(0, self._on_success)
             else:
-                self.root.after(0, self._on_error)
+                self.root.after(0, lambda: self._on_error(f"Process returned {result}"))
                 
         except Exception as e:
             self.root.after(0, lambda: self._on_error(str(e)))
+            import traceback
+            traceback.print_exc()
         finally:
-            self.process = None
             self.is_running = False
             self.root.after(0, lambda: self.run_btn.config(state=tk.NORMAL))
+    
+    def _run_fastsam(self, mode, device, input_path):
+        """Run FastSAM segmentation (matching run_fastsam.py functionality)."""
+        from fastsam.rock_fastsam_system import RockUltraSystem
+        from core import update_config_from_args, print_summary
+        
+        # Set device in config
+        import yaml
+        config_path = get_resource_path("configs/fastsam.yaml")
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        config['model_paths']['device'] = device
+        with open(config_path, 'w') as f:
+            yaml.dump(config, f)
+        
+        # Create system instance
+        try:
+            system = RockUltraSystem(str(config_path))
+        except Exception as e:
+            print(f"Error: System initialization failed: {e}")
+            return 1
+        
+        # Initialize models
+        print("\nInitializing AI models...")
+        if not system.initialize_models():
+            print("Error: Model initialization failed")
+            return 1
+        print("AI models initialized successfully")
+        
+        # Show system info
+        system.show_system_info()
+        
+        # Interactive mode
+        if mode == "interactive":
+            if not input_path:
+                print("Error: Interactive mode requires input image")
+                return 1
+            
+            print("\nStarting GUI interactive mode...")
+            system.run_interactive_mode(input_path)
+            
+            print("\n" + "=" * 60)
+            print("GUI interaction ended")
+            print("=" * 60)
+            
+            # Save interactive results (matching run_fastsam.py)
+            if system.interactive_system and hasattr(system.interactive_system, 'grains'):
+                grains_count = len(system.interactive_system.grains)
+                if grains_count > 0:
+                    print(f"Marked {grains_count} grains during interaction")
+                    # Note: In GUI mode, auto-save instead of prompting
+                    if hasattr(system.interactive_system, '_generate_complete_outputs'):
+                        output_dir = system.interactive_system._generate_complete_outputs()
+                        if output_dir:
+                            print(f"Results saved to: {output_dir}")
+            
+            return 0
+        
+        # Check input path
+        if not input_path:
+            print("Error: No input path specified")
+            return 1
+        
+        if not Path(input_path).exists():
+            print(f"Error: Input path does not exist: {input_path}")
+            return 1
+        
+        # Process
+        results = None
+        
+        if Path(input_path).is_file():
+            print(f"\nProcessing single image: {input_path}")
+            results = system.process_single_image(input_path)
+        elif Path(input_path).is_dir():
+            if mode == "batch":
+                print(f"\nBatch processing folder: {input_path}")
+                results = system.batch_process(input_path)
+            else:
+                print("Error: Input path is folder, please use batch mode")
+                return 1
+        
+        # Show results summary (matching run_fastsam.py)
+        if results:
+            print_summary(results, "FastSAM")
+        
+        print(f"\nAll results saved to: {system.output_root}")
+        print("\n" + "=" * 70)
+        print("FastSAM processing complete!")
+        print("=" * 70)
+        
+        return 0
+    
+    def _run_mobilesam(self, mode, device, input_path):
+        """Run MobileSAM segmentation (matching run_mobilesam.py functionality)."""
+        try:
+            from mobilesam.rock_mobilesam_system import RockMobileSystem
+        except ImportError:
+            print("Error: MobileSAM not installed")
+            print("Install with: pip install git+https://github.com/ChaoningZhang/MobileSAM.git")
+            return 1
+        
+        from core import print_summary
+        
+        # Set device in config
+        import yaml
+        config_path = get_resource_path("configs/mobilesam.yaml")
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        config['model_paths']['device'] = device
+        with open(config_path, 'w') as f:
+            yaml.dump(config, f)
+        
+        # Create system instance
+        try:
+            print(f"\nInitializing MobileSAM main system...")
+            system = RockMobileSystem(str(config_path))
+        except Exception as e:
+            print(f"Error: System initialization failed: {e}")
+            return 1
+        
+        # Initialize models
+        print("Initializing AI models...")
+        if not system.initialize_models():
+            print("Error: Model initialization failed")
+            return 1
+        print("AI models initialized successfully")
+        
+        # Show system info
+        system.show_system_info()
+        
+        # Interactive mode
+        if mode == "interactive":
+            if not input_path:
+                print("Error: Interactive mode requires input image")
+                return 1
+            
+            print(f"\nStarting GUI interactive mode...")
+            try:
+                system.run_interactive_mode(input_path)
+                
+                print("\n" + "=" * 60)
+                print("GUI interaction ended")
+                print("=" * 60)
+                
+                # Save interactive results (matching run_mobilesam.py)
+                if system.interactive_system and hasattr(system.interactive_system, 'grains'):
+                    grains_count = len(system.interactive_system.grains)
+                    if grains_count > 0:
+                        print(f"Marked {grains_count} grains during interaction")
+                        if hasattr(system.interactive_system, '_generate_complete_outputs'):
+                            output_dir = system.interactive_system._generate_complete_outputs()
+                            if output_dir:
+                                print(f"Results saved to: {output_dir}")
+                
+                return 0
+            except Exception as e:
+                print(f"Error: Interactive mode execution failed: {e}")
+                return 1
+        
+        # Check input
+        if not input_path:
+            print("\nError: No input path specified")
+            return 1
+        
+        input_path = Path(input_path).absolute()
+        
+        if not input_path.exists():
+            print(f"Error: Input path does not exist: {input_path}")
+            return 1
+        
+        # Process
+        if input_path.is_file():
+            print(f"\nProcessing single image: {input_path}")
+            results = system.process_single_image(str(input_path))
+            if results:
+                print_summary(results, "MobileSAM")
+        elif input_path.is_dir():
+            if mode == "batch":
+                print(f"\nBatch processing folder: {input_path}")
+                results = system.batch_process(str(input_path))
+                if results:
+                    print_summary(results, "MobileSAM")
+            else:
+                print("Error: Input path is folder, please use batch mode")
+                return 1
+        
+        print(f"\nAll results saved to: {system.output_root}")
+        print("\n" + "=" * 70)
+        print("MobileSAM processing complete!")
+        print("=" * 70)
+        
+        return 0
     
     def _on_success(self):
         """Handle successful completion."""

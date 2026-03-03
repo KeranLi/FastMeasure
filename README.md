@@ -286,18 +286,28 @@ python fastsam_interactive.py --config configs/fastsam_ultra_smooth.yaml
 
 ### Unified Entry Point (Recommended)
 
-The project provides a unified entry script `run.py` to start FastSAM or MobileSAM:
+The project provides a unified entry script `run.py` as a convenience wrapper for FastSAM and MobileSAM. 
+
+**Note:** `run.py` simply forwards to `run_fastsam.py` or `run_mobilesam.py` - all functionality is identical.
 
 ```bash
-# FastSAM processing
+# FastSAM processing (equivalent to: python run_fastsam.py --input image.tif)
 python run.py fastsam --input path/to/image.tif
 
-# MobileSAM batch processing
+# MobileSAM batch processing (equivalent to: python run_mobilesam.py --input folder/ --batch)
 python run.py mobilesam --input path/to/folder --batch
 
 # Interactive mode
 python run.py mobilesam --interactive
+
+# Terminal wizard mode (no arguments)
+python run.py fastsam
+python run.py mobilesam
 ```
+
+**When to use which:**
+- Use `run.py` if you prefer a single entry point for both modes
+- Use `run_fastsam.py`/`run_mobilesam.py` directly for clarity or scripting
 
 ### FastSAM Processing Workflow
 
@@ -744,7 +754,7 @@ pip install pyinstaller
 
 ```bash
 # Run the build script
-python build_exe.py
+python application/build_exe.py
 ```
 
 This will:
@@ -752,6 +762,8 @@ This will:
 2. Package all Python dependencies
 3. Include model configs and core modules
 4. Create `dist/FastMeasure/` folder with executable
+
+**Note**: The GUI launcher (`utils/gui_launcher.py`) is used as the entry point. It directly calls the system classes (not via subprocess), ensuring consistent behavior between the executable and Python scripts.
 
 #### Method 2: Manual Build
 
@@ -765,9 +777,16 @@ pyinstaller --name FastMeasure \
             --add-data "mobilesam;mobilesam" \
             --add-data "geometry;geometry" \
             --add-data "configs;configs" \
-            --hidden-import ultralytics \
-            --hidden-import torch \
-            gui_launcher.py
+            --add-data "utils;utils" \
+            --hidden-import "core" \
+            --hidden-import "core.seg_tools" \
+            --hidden-import "core.segment_core" \
+            --hidden-import "geometry.grain_metric" \
+            --hidden-import "fastsam.rock_fastsam_system" \
+            --hidden-import "mobilesam.rock_mobilesam_system" \
+            --hidden-import "ultralytics" \
+            --hidden-import "torch" \
+            utils/gui_launcher.py
 ```
 
 ### Distribution
@@ -791,9 +810,26 @@ dist/
 
 ### Creating Windows Installer (Optional)
 
+If you need a Windows installer (`.exe` setup file), you can create one using Inno Setup:
+
 1. Install [Inno Setup](https://jrsoftware.org/isinfo.php)
-2. Open `installer.iss` in Inno Setup Compiler
-3. Build to create `FastMeasure_Setup.exe`
+2. Create a script file (e.g., `installer.iss`):
+
+```ini
+[Setup]
+AppName=FastMeasure
+AppVersion=1.0.0
+DefaultDirName={autopf}\FastMeasure
+OutputBaseFilename=FastMeasure_Setup
+
+[Files]
+Source: "dist\FastMeasure\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+
+[Icons]
+Name: "{autoprograms}\FastMeasure"; Filename: "{app}\FastMeasure.exe"
+```
+
+3. Build in Inno Setup Compiler to create `FastMeasure_Setup.exe`
 
 ### Notes
 

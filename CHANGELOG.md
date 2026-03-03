@@ -4,6 +4,77 @@ All development progress, feature updates and architecture changes of this proje
 
 ---
 
+## 2026-03-02 - Fixed PyInstaller EXE Packaging
+
+- **Modifier:** AI Assistant
+- **Modification Type:** Bug Fix
+- **Involved Files:** `run.py` (new), `utils/gui_launcher.py`, `application/build_exe.py`
+
+### Problem
+The packaged executable (`FastMeasure.exe`) behaved differently from running Python scripts directly:
+1. **Missing `run.py`**: The GUI launcher tried to call `run.py` via subprocess, but this file didn't exist
+2. **Subprocess issues**: In PyInstaller frozen environment, `sys.executable` points to the exe itself, not Python interpreter
+3. **Missing imports**: Build script lacked hidden imports for `geometry`, `fastsam`, `mobilesam` modules
+
+### Fixes
+
+#### 1. Created `run.py` (Unified CLI Entry)
+Created unified CLI entry point that simply forwards to existing scripts:
+```python
+# run.py just forwards to existing scripts
+def run_fastsam():
+    sys.argv = [sys.argv[0]] + sys.argv[2:]  # Remove 'fastsam' arg
+    from run_fastsam import main
+    return main()
+
+def run_mobilesam():
+    sys.argv = [sys.argv[0]] + sys.argv[2:]  # Remove 'mobilesam' arg
+    from run_mobilesam import main
+    return main()
+```
+
+**Benefits:**
+- No code duplication - reuses all functionality from `run_fastsam.py`/`run_mobilesam.py`
+- All features supported: terminal wizard, interactive mode, batch processing, config updates
+- Identical behavior: `python run.py fastsam` == `python run_fastsam.py`
+
+#### 2. Fixed `gui_launcher.py`
+Changed from subprocess-based execution to direct function calls with full feature support:
+
+**Before:**
+- Used `subprocess.Popen([sys.executable, "run.py", ...])`
+- Failed in PyInstaller environment (missing `run.py`)
+
+**After:**
+- Direct call to `RockUltraSystem`/`RockMobileSystem` classes
+- Full feature parity with `run_fastsam.py`/`run_mobilesam.py`:
+  - ✅ 单图处理 (`process_single_image`)
+  - ✅ 批量处理 (`batch_process`)
+  - ✅ 交互模式 (`run_interactive_mode`)
+  - ✅ 交互结果自动保存 (`_generate_complete_outputs`)
+  - ✅ 结果摘要 (`print_summary`)
+  - ✅ 系统信息展示 (`show_system_info`)
+  - ✅ 模型初始化 (`initialize_models`)
+- Works correctly in both development and frozen environments
+- Better error handling and output capture
+
+#### 3. Updated `build_exe.py`
+- **Removed** `installer.iss` generation (user can create manually if needed)
+- **Created** `hooks/` directory for PyInstaller hook files
+- Added missing hidden imports:
+- Core modules: `core.segment_core`
+- Geometry modules: `geometry.grain_metric`, `geometry.config_loader`, `geometry.export_csv`
+- FastSAM modules: `fastsam.rock_fastsam_system`, `fastsam.yolo_fastsam`, `fastsam.seg_engine`
+- MobileSAM modules: `mobilesam.rock_mobilesam_system`, `mobilesam.yolo_mobilesam`, `mobilesam.mobile_sam_engine`
+- Additional dependencies: `sklearn.cluster`, `skimage.measure`, `skimage.morphology`, `scipy.spatial`, `shapely.geometry`, `timm`
+
+### Result
+- Packaged executable works identically to Python scripts
+- GUI launcher correctly initializes systems directly
+- `run.py` provides unified CLI without duplicating code
+
+---
+
 ## 2026-03-02 - Full Geometry Parameter Support
 
 - **Modifier:** AI Assistant

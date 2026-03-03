@@ -36,6 +36,11 @@ def clean_build():
     for spec_file in Path(".").glob("*.spec"):
         spec_file.unlink()
         print(f"[Build] Removed {spec_file.name}")
+    
+    # Remove installer.iss if exists
+    if Path("installer.iss").exists():
+        Path("installer.iss").unlink()
+        print("[Build] Removed installer.iss")
 
 
 def check_requirements():
@@ -56,6 +61,22 @@ def check_requirements():
         if not Path(dir_name).exists():
             print(f"[Build] Error: Required directory '{dir_name}' not found!")
             return False
+    
+    # Create hooks directory if not exists
+    hooks_dir = Path("hooks")
+    if not hooks_dir.exists():
+        hooks_dir.mkdir()
+        print(f"[Build] Created hooks/ directory")
+    
+    # Create hook file if not exists
+    hook_file = hooks_dir / "hook-pyparsing.py"
+    if not hook_file.exists():
+        hook_content = '''"""PyInstaller hook for pyparsing"""
+hiddenimports = ['unittest']
+'''
+        with open(hook_file, "w") as f:
+            f.write(hook_content)
+        print(f"[Build] Created hooks/hook-pyparsing.py")
     
     print("[Build] All requirements satisfied")
     return True
@@ -81,20 +102,22 @@ def build_executable():
         "--windowed",
         # Icon (if available)
         # "--icon=assets/icon.ico",
-        # Additional hooks directory
-        "--additional-hooks-dir", "pyinstaller_hooks",
+        # Additional hooks directory (for custom hooks)
+        "--additional-hooks-dir", "hooks",
         # Add data files (platform-specific separator)
+        # Format: "source_path{sep}destination_folder"
         "--add-data", f"core{sep}core",
         "--add-data", f"fastsam{sep}fastsam",
         "--add-data", f"mobilesam{sep}mobilesam",
         "--add-data", f"geometry{sep}geometry",
-                "--add-data", f"configs{sep}configs",
-        
-        
+        "--add-data", f"configs{sep}configs",
+        "--add-data", f"utils{sep}utils",
+        # Entry point scripts
         "--add-data", f"run.py{sep}.",
         "--add-data", f"run_fastsam.py{sep}.",
         "--add-data", f"run_mobilesam.py{sep}.",
-        "--add-data", f"utils{sep}utils",
+        # Create hooks directory if not exists
+        # (hook files should be in hooks/ directory)
         # Hidden imports for core modules
         "--hidden-import", "core",
         "--hidden-import", "core.seg_tools",
@@ -103,6 +126,22 @@ def build_executable():
         "--hidden-import", "core.scale_calibration",
         "--hidden-import", "core.seg_optimize",
         "--hidden-import", "core.yolo_trainer",
+        "--hidden-import", "core.segment_core",
+        # Hidden imports for geometry modules
+        "--hidden-import", "geometry",
+        "--hidden-import", "geometry.grain_metric",
+        "--hidden-import", "geometry.config_loader",
+        "--hidden-import", "geometry.export_csv",
+        # Hidden imports for fastsam modules
+        "--hidden-import", "fastsam",
+        "--hidden-import", "fastsam.rock_fastsam_system",
+        "--hidden-import", "fastsam.yolo_fastsam",
+        "--hidden-import", "fastsam.seg_engine",
+        # Hidden imports for mobilesam modules
+        "--hidden-import", "mobilesam",
+        "--hidden-import", "mobilesam.rock_mobilesam_system",
+        "--hidden-import", "mobilesam.yolo_mobilesam",
+        "--hidden-import", "mobilesam.mobile_sam_engine",
         # Hidden imports for third-party packages
         "--hidden-import", "ultralytics",
         "--hidden-import", "ultralytics.nn.modules",
@@ -115,12 +154,23 @@ def build_executable():
         "--hidden-import", "PIL",
         "--hidden-import", "yaml",
         "--hidden-import", "sklearn",
+        "--hidden-import", "sklearn.cluster",
         "--hidden-import", "skimage",
+        "--hidden-import", "skimage.measure",
+        "--hidden-import", "skimage.morphology",
+        "--hidden-import", "scipy",
+        "--hidden-import", "scipy.spatial",
         "--hidden-import", "shapely",
+        "--hidden-import", "shapely.geometry",
         "--hidden-import", "matplotlib",
         "--hidden-import", "matplotlib.backends.backend_tkagg",
         "--hidden-import", "segment_anything",
         "--hidden-import", "mobile_sam",
+        "--hidden-import", "timm",
+        # Hidden imports for stdlib (required by dependencies)
+        "--hidden-import", "unittest",
+        "--hidden-import", "unittest.mock",
+        "--hidden-import", "pyparsing",
                         # Collect all packages
         "--collect-all", "ultralytics",
         "--collect-all", "torch",
@@ -129,8 +179,8 @@ def build_executable():
         "--collect-binaries", "cv2",
         "--copy-metadata", "opencv-python",
         # Exclude unnecessary packages (reduce size)
+        # Note: unittest cannot be excluded - required by pyparsing
         "--exclude-module", "pytest",
-        "--exclude-module", "unittest",
         "--exclude-module", "tkinter.test",
         "--exclude-module", "matplotlib.tests",
         "--exclude-module", "numpy.random._examples",
@@ -333,10 +383,6 @@ def main():
     
     # Copy additional files
     copy_additional_files()
-    
-    # Create installer script (Windows only)
-    if sys.platform == "win32":
-        create_installer_script()
     
     # Print summary
     print_summary()
