@@ -516,8 +516,12 @@ grain_statistics_csv:
   enabled: true
   # Columns finally written to CSV (output in this order)
   keep_columns:
-    - label
+    - grain_id
     - area
+    - centroid_x
+    - centroid_y
+    - width
+    - height
     - perimeter
     - circularity
     - aspect_ratio
@@ -526,6 +530,12 @@ grain_statistics_csv:
     - area_um2
     - diameter_um
 ```
+
+**Note**: The `keep_columns` list must use actual column names from the DataFrame:
+- `grain_id` (not `label`) - Grain identifier
+- `centroid_x`, `centroid_y` - Centroid coordinates
+- `width`, `height` - Bounding box dimensions
+- Geometric parameters like `circularity`, `aspect_ratio`, etc. are calculated by the geometry module (requires `scikit-image`)
 
 ## Output File Guide
 
@@ -665,7 +675,7 @@ A: Modify the `yolo_confidence` parameter in the configuration file (smaller val
 A: Ensure the system has GUI support, or try setting the environment variable `MPLBACKEND=TkAgg`.
 
 **Q: Why isn't geometry.yaml affecting the output columns?**  
-A: This usually means `scikit-image` is not installed. The geometry module requires it. Install with: `pip install scikit-image`
+A: Check two things: 1) Ensure `scikit-image` is installed (`pip install scikit-image`), and 2) Verify column names in `geometry.yaml` match actual DataFrame columns (use `grain_id`, not `label`).
 
 ## Change Log
 

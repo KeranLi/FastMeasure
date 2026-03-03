@@ -4,6 +4,59 @@ All development progress, feature updates and architecture changes of this proje
 
 ---
 
+## 2026-03-02 - Geometry Module Bug Fixes
+
+- **Modifier:** AI Assistant
+- **Modification Type:** Bug Fix
+- **Involved Files:** `mobilesam_interactive.py`, `fastsam_interactive_macos.py`, `mobilesam_interactive_macos.py`, `mobilesam/yolo_mobilesam.py`, `configs/geometry.yaml`, `README.md`
+
+### Problem
+The `geometry.yaml` configuration was not affecting CSV output correctly:
+1. **Column name mismatch**: Config used `label` but actual DataFrame column is `grain_id`
+2. **Missing required columns**: `GrainShapeMetrics` requires `major_axis_length` and `minor_axis_length` columns, but interactive scripts did not include them
+3. This caused `GrainShapeMetrics.compute_all_metrics()` to fail silently, resulting in only 3 basic columns (area, perimeter, circularity) being output instead of the configured 13 columns
+
+### Fixes
+
+#### 1. Fixed Column Names in geometry.yaml
+- Changed `label` to `grain_id` in `keep_columns`
+- Added missing basic columns: `centroid_x`, `centroid_y`, `width`, `height`
+
+#### 2. Added Missing Required Columns
+Updated all interactive scripts to calculate and include `major_axis_length` and `minor_axis_length`:
+- `mobilesam_interactive.py` - Added skimage regionprops calculation
+- `fastsam_interactive_macos.py` - Added skimage regionprops calculation  
+- `mobilesam_interactive_macos.py` - Added skimage regionprops calculation
+- `mobilesam/yolo_mobilesam.py` - Added skimage regionprops calculation for run_mobilesam.py
+
+**Implementation:**
+```python
+# Calculate major_axis_length and minor_axis_length for geometry metrics
+try:
+    from skimage.measure import regionprops
+    regions = regionprops(mask.astype(np.uint8))
+    if regions:
+        major_axis_length = regions[0].major_axis_length
+        minor_axis_length = regions[0].minor_axis_length
+    else:
+        major_axis_length = max(width, height)
+        minor_axis_length = min(width, height)
+except Exception:
+    # Fallback if skimage unavailable
+    major_axis_length = max(width, height)
+    minor_axis_length = min(width, height)
+```
+
+#### 3. Updated Documentation
+- Updated README.md geometry.yaml example with correct column names
+- Added note about required column naming conventions
+- Updated FAQ about geometry.yaml troubleshooting
+
+### Result
+CSV output now correctly includes all configured columns from `geometry.yaml` (13 columns by default) when `scikit-image` is installed.
+
+---
+
 ## 2026-03-02 - Remove segmenteverygrain Dependency
 
 - **Modifier:** Core Team
