@@ -480,6 +480,21 @@ class PureMobileSAMInteractiveEnhanced:
                         
                         confidence = float(grain.get('confidence', 0.5))
                         
+                        # 计算 major_axis_length 和 minor_axis_length 用于几何参数计算
+                        try:
+                            from skimage.measure import regionprops
+                            regions = regionprops(mask.astype(np.uint8))
+                            if regions:
+                                major_axis_length = regions[0].major_axis_length
+                                minor_axis_length = regions[0].minor_axis_length
+                            else:
+                                major_axis_length = max(width, height)
+                                minor_axis_length = min(width, height)
+                        except Exception:
+                            # 如果 skimage 不可用则使用近似值
+                            major_axis_length = max(width, height)
+                            minor_axis_length = min(width, height)
+                        
                         basic_data.append({
                             'grain_id': grain['id'],
                             'area': float(area),
@@ -489,7 +504,9 @@ class PureMobileSAMInteractiveEnhanced:
                             'height': float(height),
                             'perimeter': float(perimeter),
                             'confidence': float(confidence),
-                            'mask_area_pixels': int(area)
+                            'mask_area_pixels': int(area),
+                            'major_axis_length': float(major_axis_length),
+                            'minor_axis_length': float(minor_axis_length)
                         })
             
             if not basic_data:

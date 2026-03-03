@@ -245,6 +245,30 @@ class MobileSegmentationPipeline:
                 solidity = area / convex_hull.area if convex_hull.area > 0 else 0.0
                 aspect_ratio = width / height if height > 0 else 1.0
                 
+                # 计算 major_axis_length 和 minor_axis_length 用于几何参数计算
+                try:
+                    from skimage.measure import regionprops
+                    import numpy as np
+                    # 创建临时 mask 用于计算
+                    x_pts, y_pts = poly.exterior.xy
+                    mask_h, mask_w = int(height) + 10, int(width) + 10
+                    mask = np.zeros((mask_h, mask_w), dtype=np.uint8)
+                    pts = np.array([x_pts, y_pts], dtype=np.int32).T
+                    pts[:, 0] -= int(bounds[0])
+                    pts[:, 1] -= int(bounds[1])
+                    cv2.fillPoly(mask, [pts], 1)
+                    regions = regionprops(mask)
+                    if regions:
+                        major_axis_length = regions[0].major_axis_length
+                        minor_axis_length = regions[0].minor_axis_length
+                    else:
+                        major_axis_length = max(width, height)
+                        minor_axis_length = min(width, height)
+                except Exception:
+                    # 如果失败则使用近似值
+                    major_axis_length = max(width, height)
+                    minor_axis_length = min(width, height)
+                
                 data.append({
                     'grain_id': i + 1,           # 统一使用 grain_id
                     'area': area,
@@ -260,7 +284,9 @@ class MobileSegmentationPipeline:
                     'bounds_x1': bounds[0],
                     'bounds_y1': bounds[1],
                     'bounds_x2': bounds[2],
-                    'bounds_y2': bounds[3]
+                    'bounds_y2': bounds[3],
+                    'major_axis_length': major_axis_length,
+                    'minor_axis_length': minor_axis_length
                 })
             
             df = pd.DataFrame(data)

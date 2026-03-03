@@ -5,6 +5,7 @@ interactive_fastsam_results/
 interactive_results/
 results_mobilesam/
 release/
+ML_Ooilite/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
