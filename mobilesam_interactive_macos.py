@@ -495,6 +495,22 @@ class PureMobileSAMInteractiveEnhanced:
                             major_axis_length = max(width, height)
                             minor_axis_length = min(width, height)
                         
+                        # 提取轮廓坐标用于高级几何参数计算
+                        coordinates = None
+                        try:
+                            mask_uint8 = (mask * 255).astype(np.uint8)
+                            contours, _ = cv2.findContours(
+                                mask_uint8, 
+                                cv2.RETR_EXTERNAL, 
+                                cv2.CHAIN_APPROX_SIMPLE
+                            )
+                            if contours:
+                                largest_contour = max(contours, key=cv2.contourArea)
+                                # 转换为 [[x, y], ...] 格式
+                                coordinates = largest_contour.reshape(-1, 2).tolist()
+                        except Exception:
+                            pass
+                        
                         basic_data.append({
                             'grain_id': grain['id'],
                             'area': float(area),
@@ -506,7 +522,8 @@ class PureMobileSAMInteractiveEnhanced:
                             'confidence': float(confidence),
                             'mask_area_pixels': int(area),
                             'major_axis_length': float(major_axis_length),
-                            'minor_axis_length': float(minor_axis_length)
+                            'minor_axis_length': float(minor_axis_length),
+                            'coordinates': coordinates   # 用于分形维数和傅里叶描述符
                         })
             
             if not basic_data:
@@ -519,13 +536,12 @@ class PureMobileSAMInteractiveEnhanced:
                     shape_calculator = GrainShapeMetrics(basic_df)
                     geometry_df = shape_calculator.compute_all_metrics()
                     
-                    existing_columns = [col for col in geometry_df.columns 
-                                      if col in ['grain_id', 'area', 'perimeter', 'circularity',
-                                                'aspect_ratio', 'compactness', 'centroid_x',
-                                                'centroid_y', 'width', 'height', 'confidence']]
-                    geometry_df = geometry_df[existing_columns]
+                    # 移除 coordinates 列（太大不适合CSV），但保留所有其他几何参数
+                    if 'coordinates' in geometry_df.columns:
+                        geometry_df = geometry_df.drop(columns=['coordinates'])
                     
                     print(f"✅ 高级几何参数计算完成，共{len(geometry_df.columns)}个参数")
+                    print(f"列名: {list(geometry_df.columns)}")
                     return geometry_df
                     
                 except Exception as e:

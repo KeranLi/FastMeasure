@@ -97,11 +97,18 @@ See [Model Training Guide](#model-training) below for detailed instructions.
 - Support custom labeling styles (font, color, outline, etc.)
 
 ### 4. Geometric Parameter Calculation
-The system can calculate various grain geometric parameters:
-- **Basic Parameters**: Area, perimeter, centroid coordinates, bounding rectangle
-- **Shape Parameters**: Circularity, Aspect Ratio, Rectangularity
-- **Structural Parameters**: Compactness, Roundness, Convexity
-- **Advanced Parameters**: Fractal Dimension, Angularity
+The system can calculate 14 grain geometric parameters:
+
+| Category | Parameters | Description |
+|----------|-----------|-------------|
+| **Basic** | `area`, `perimeter`, `centroid_x/y`, `width`, `height` | Fundamental measurements |
+| **Shape** | `circularity`, `aspect_ratio`, `rectangularity` | Overall shape characteristics |
+| **Structural** | `compactness`, `roundness`, `convexity` | Surface complexity measures |
+| **Advanced** | `fractal_dimension`, `angularity` | Complexity and corner count |
+| **Zingg** | `EI_2d`, `FI_2d`, `AR_2d` | 2D Zingg shape classification |
+| **Fourier** | `D2_2d`, `D3_2d`, `D4_2d` | Fourier descriptors (contour frequency) |
+
+All parameters are configured via `configs/geometry.yaml`.
 
 ### 5. Flexible Configuration System
 - `configs/fastsam.yaml` / `configs/mobilesam.yaml`: Main configuration files

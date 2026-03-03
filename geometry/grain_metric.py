@@ -162,18 +162,36 @@ class GrainShapeMetrics:
         def box_counting(coords):
             """Calculate fractal dimension using box counting method"""
             coords = np.array(coords)
+            if len(coords) < 2:
+                return 1.0
             min_coords = coords.min(axis=0)
             max_coords = coords.max(axis=0)
-            box_size = max(max_coords - min_coords) / 10
+            size = max(max_coords - min_coords)
+            if size == 0:
+                return 1.0
+            box_size = size / 10
             count = 0
             for box_x in np.arange(min_coords[0], max_coords[0], box_size):
                 for box_y in np.arange(min_coords[1], max_coords[1], box_size):
                     if np.any((coords[:, 0] >= box_x) & (coords[:, 0] < box_x + box_size) &
                               (coords[:, 1] >= box_y) & (coords[:, 1] < box_y + box_size)):
                         count += 1
+            if count <= 1:
+                return 1.0
             return np.log(count) / np.log(1 / box_size)
         
-            #return np.array([box_counting(grain['coordinates']) for _, grain in self.grain_data.iterrows()])
+        # Calculate fractal dimension for each grain
+        results = []
+        for _, grain in self.grain_data.iterrows():
+            if 'coordinates' in grain and grain['coordinates'] is not None:
+                try:
+                    fd = box_counting(grain['coordinates'])
+                    results.append(fd)
+                except Exception:
+                    results.append(1.0)
+            else:
+                results.append(1.0)
+        return pd.Series(results, index=self.grain_data.index)
         
     def calculate_angularity(self) -> pd.Series:
         """
@@ -183,10 +201,19 @@ class GrainShapeMetrics:
         """
         angularity = []
         for _, grain in self.grain_data.iterrows():
-            coords = grain['coordinates']
-            hull = ConvexHull(coords)
-            angularity.append(len(hull.vertices))  # Count boundary corner points as simple estimate of angularity
-        return pd.Series(angularity)
+            if 'coordinates' in grain and grain['coordinates'] is not None:
+                try:
+                    coords = np.array(grain['coordinates'])
+                    if len(coords) >= 3:
+                        hull = ConvexHull(coords)
+                        angularity.append(len(hull.vertices))  # Count boundary corner points
+                    else:
+                        angularity.append(0)
+                except Exception:
+                    angularity.append(0)
+            else:
+                angularity.append(0)
+        return pd.Series(angularity, index=self.grain_data.index)
     
     def calculate_roundness(self) -> pd.Series:
         """
@@ -202,14 +229,29 @@ class GrainShapeMetrics:
         """
         Calculate all grain shape parameters
         """
+        # Basic shape parameters
         self.grain_data['circularity'] = self.calculate_circularity()
         self.grain_data['aspect_ratio'] = self.calculate_aspect_ratio()
         self.grain_data['rectangularity'] = self.calculate_rectangularity()
         self.grain_data['compactness'] = self.calculate_compactness()
+        self.grain_data['roundness'] = self.calculate_roundness()
+        self.grain_data['convexity'] = self.calculate_convexity()
+        
+        # Advanced parameters requiring coordinates
         self.grain_data['fractal_dimension'] = self.calculate_fractal_dimension()
         self.grain_data['angularity'] = self.calculate_angularity()
-        self.grain_data['roundness'] = self.calculate_roundness()
-        self.grain_data['fractal_dimension'] = self.calculate_fractal_dimension()
-        self.grain_data['convexity'] = self.calculate_convexity()
+        
+        # Zingg parameters (2D shape classification)
+        zingg_df = self.calculate_2d_zingg_parameters()
+        self.grain_data['EI_2d'] = zingg_df['EI_2d']
+        self.grain_data['FI_2d'] = zingg_df['FI_2d']
+        self.grain_data['AR_2d'] = zingg_df['AR_2d']
+        
+        # Fourier descriptors (requires coordinates)
+        if 'coordinates' in self.grain_data.columns:
+            fourier_df = self.calculate_fourier_descriptors()
+            self.grain_data['D2_2d'] = fourier_df['D2_2d']
+            self.grain_data['D3_2d'] = fourier_df['D3_2d']
+            self.grain_data['D4_2d'] = fourier_df['D4_2d']
         
         return self.grain_data
