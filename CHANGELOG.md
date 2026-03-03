@@ -4,56 +4,75 @@ All development progress, feature updates and architecture changes of this proje
 
 ---
 
-## 2026-03-02 - Geometry Module Bug Fixes
+## 2026-03-02 - Full Geometry Parameter Support
 
 - **Modifier:** AI Assistant
-- **Modification Type:** Bug Fix
-- **Involved Files:** `mobilesam_interactive.py`, `fastsam_interactive_macos.py`, `mobilesam_interactive_macos.py`, `mobilesam/yolo_mobilesam.py`, `configs/geometry.yaml`, `README.md`
+- **Modification Type:** Feature Enhancement + Bug Fix
+- **Involved Files:** `geometry/grain_metric.py`, `mobilesam_interactive.py`, `fastsam_interactive_macos.py`, `mobilesam_interactive_macos.py`, `mobilesam/yolo_mobilesam.py`, `configs/geometry.yaml`, `README.md`
 
 ### Problem
 The `geometry.yaml` configuration was not affecting CSV output correctly:
 1. **Column name mismatch**: Config used `label` but actual DataFrame column is `grain_id`
-2. **Missing required columns**: `GrainShapeMetrics` requires `major_axis_length` and `minor_axis_length` columns, but interactive scripts did not include them
-3. This caused `GrainShapeMetrics.compute_all_metrics()` to fail silently, resulting in only 3 basic columns (area, perimeter, circularity) being output instead of the configured 13 columns
+2. **Missing required columns**: `GrainShapeMetrics` requires `major_axis_length` and `minor_axis_length` columns
+3. **Missing `coordinates` column**: Advanced parameters (fractal dimension, Fourier descriptors, angularity) require contour coordinates but they were not provided
+4. **Unused methods**: 3 geometry calculation methods were never called
+5. **Redundant code**: `calculate_fractal_dimension()` was called twice
 
-### Fixes
+### Changes
 
-#### 1. Fixed Column Names in geometry.yaml
-- Changed `label` to `grain_id` in `keep_columns`
-- Added missing basic columns: `centroid_x`, `centroid_y`, `width`, `height`
+#### 1. Fixed `geometry/grain_metric.py`
+- **Fixed** `calculate_fractal_dimension()`: Now properly handles missing coordinates and returns valid values
+- **Fixed** `calculate_angularity()`: Added null checks for coordinates
+- **Enabled** `calculate_2d_zingg_parameters()`: Now called in `compute_all_metrics()`, outputs `EI_2d`, `FI_2d`, `AR_2d`
+- **Enabled** `calculate_fourier_descriptors()`: Now called in `compute_all_metrics()`, outputs `D2_2d`, `D3_2d`, `D4_2d`
+- **Removed duplicate call**: `calculate_fractal_dimension()` called only once
+- **Total parameters**: Now calculates all 14 geometry parameters
 
-#### 2. Added Missing Required Columns
-Updated all interactive scripts to calculate and include `major_axis_length` and `minor_axis_length`:
-- `mobilesam_interactive.py` - Added skimage regionprops calculation
-- `fastsam_interactive_macos.py` - Added skimage regionprops calculation  
-- `mobilesam_interactive_macos.py` - Added skimage regionprops calculation
-- `mobilesam/yolo_mobilesam.py` - Added skimage regionprops calculation for run_mobilesam.py
+#### 2. Added `coordinates` Column to All Scripts
+Updated all data generation code to extract and include contour coordinates:
+- `mobilesam_interactive.py`
+- `fastsam_interactive_macos.py`
+- `mobilesam_interactive_macos.py`
+- `mobilesam/yolo_mobilesam.py`
 
 **Implementation:**
 ```python
-# Calculate major_axis_length and minor_axis_length for geometry metrics
+# Extract contour coordinates for advanced geometry calculations
+coordinates = None
 try:
-    from skimage.measure import regionprops
-    regions = regionprops(mask.astype(np.uint8))
-    if regions:
-        major_axis_length = regions[0].major_axis_length
-        minor_axis_length = regions[0].minor_axis_length
-    else:
-        major_axis_length = max(width, height)
-        minor_axis_length = min(width, height)
+    mask_uint8 = (mask * 255).astype(np.uint8)
+    contours, _ = cv2.findContours(
+        mask_uint8, 
+        cv2.RETR_EXTERNAL, 
+        cv2.CHAIN_APPROX_SIMPLE
+    )
+    if contours:
+        largest_contour = max(contours, key=cv2.contourArea)
+        coordinates = largest_contour.reshape(-1, 2).tolist()
 except Exception:
-    # Fallback if skimage unavailable
-    major_axis_length = max(width, height)
-    minor_axis_length = min(width, height)
+    pass
 ```
 
-#### 3. Updated Documentation
-- Updated README.md geometry.yaml example with correct column names
-- Added note about required column naming conventions
+#### 3. Fixed Column Filtering
+- Removed hardcoded column whitelists that were limiting output columns
+- Now only removes `coordinates` column (too large for CSV)
+- All other geometry parameters are preserved in output
+
+#### 4. Updated `configs/geometry.yaml`
+- Changed `label` to `grain_id`
+- Added new parameters: `rectangularity`, `convexity`, `fractal_dimension`, `angularity`
+- Added Zingg parameters: `EI_2d`, `FI_2d`, `AR_2d`
+- Added Fourier descriptors: `D2_2d`, `D3_2d`, `D4_2d`
+
+#### 5. Updated Documentation
+- README.md: Added complete parameter table with 14 parameters
 - Updated FAQ about geometry.yaml troubleshooting
 
 ### Result
-CSV output now correctly includes all configured columns from `geometry.yaml` (13 columns by default) when `scikit-image` is installed.
+CSV output now includes all 14 geometry parameters (19 columns total including basic data):
+- **8 Basic shape parameters**: circularity, aspect_ratio, rectangularity, compactness, roundness, convexity, fractal_dimension, angularity
+- **3 Zingg classification parameters**: EI_2d, FI_2d, AR_2d
+- **3 Fourier descriptors**: D2_2d, D3_2d, D4_2d
 
 ---
 

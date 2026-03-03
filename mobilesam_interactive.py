@@ -405,6 +405,22 @@ class PureMobileSAMInteractiveEnhanced:
                             major_axis_length = max(width, height)
                             minor_axis_length = min(width, height)
                         
+                        # Extract contour coordinates for advanced geometry calculations
+                        coordinates = None
+                        try:
+                            mask_uint8 = (mask * 255).astype(np.uint8)
+                            contours, _ = cv2.findContours(
+                                mask_uint8, 
+                                cv2.RETR_EXTERNAL, 
+                                cv2.CHAIN_APPROX_SIMPLE
+                            )
+                            if contours:
+                                largest_contour = max(contours, key=cv2.contourArea)
+                                # Convert to [[x, y], ...] format
+                                coordinates = largest_contour.reshape(-1, 2).tolist()
+                        except Exception:
+                            pass
+                        
                         basic_data.append({
                             'grain_id': grain['id'],  # Uniformly use grain_id
                             'area': float(area),
@@ -416,7 +432,8 @@ class PureMobileSAMInteractiveEnhanced:
                             'confidence': float(confidence),
                             'mask_area_pixels': int(area),  # Extra info
                             'major_axis_length': float(major_axis_length),
-                            'minor_axis_length': float(minor_axis_length)
+                            'minor_axis_length': float(minor_axis_length),
+                            'coordinates': coordinates   # For fractal dimension and Fourier descriptors
                         })
             
             if not basic_data:
@@ -429,24 +446,9 @@ class PureMobileSAMInteractiveEnhanced:
                     shape_calculator = GrainShapeMetrics(basic_df)
                     geometry_df = shape_calculator.compute_all_metrics()
                     
-                    column_mapping = {
-                        'grain_id': 'grain_id',
-                        'area': 'area',
-                        'perimeter': 'perimeter',
-                        'circularity': 'circularity',
-                        'aspect_ratio': 'aspect_ratio',
-                        'compactness': 'compactness',
-                        'centroid_x': 'centroid_x',
-                        'centroid_y': 'centroid_y',
-                        'width': 'width',
-                        'height': 'height',
-                        'confidence': 'confidence'
-                    }
-                    
-                    existing_columns = [col for col in column_mapping.keys() if col in geometry_df.columns]
-                    geometry_df = geometry_df[existing_columns]
-                    
-                    geometry_df = geometry_df.rename(columns=column_mapping)
+                    # Remove coordinates column (too large for CSV) but keep all other geometry parameters
+                    if 'coordinates' in geometry_df.columns:
+                        geometry_df = geometry_df.drop(columns=['coordinates'])
                     
                     print(f"Advanced geometry parameters calculated, total {len(geometry_df.columns)} parameters")
                     print(f"Column names: {list(geometry_df.columns)}")

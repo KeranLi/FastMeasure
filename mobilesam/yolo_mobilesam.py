@@ -246,6 +246,8 @@ class MobileSegmentationPipeline:
                 aspect_ratio = width / height if height > 0 else 1.0
                 
                 # 计算 major_axis_length 和 minor_axis_length 用于几何参数计算
+                # 同时提取轮廓坐标用于高级几何参数计算
+                coordinates = None
                 try:
                     from skimage.measure import regionprops
                     import numpy as np
@@ -264,6 +266,9 @@ class MobileSegmentationPipeline:
                     else:
                         major_axis_length = max(width, height)
                         minor_axis_length = min(width, height)
+                    
+                    # 提取轮廓坐标
+                    coordinates = pts.tolist()
                 except Exception:
                     # 如果失败则使用近似值
                     major_axis_length = max(width, height)
@@ -286,7 +291,8 @@ class MobileSegmentationPipeline:
                     'bounds_x2': bounds[2],
                     'bounds_y2': bounds[3],
                     'major_axis_length': major_axis_length,
-                    'minor_axis_length': minor_axis_length
+                    'minor_axis_length': minor_axis_length,
+                    'coordinates': coordinates   # 用于分形维数和傅里叶描述符
                 })
             
             df = pd.DataFrame(data)

@@ -4,6 +4,7 @@ grain_statistics_csv:
 
   # 最终写入 grain_statistics.csv 的列（顺序就是输出顺序）
   keep_columns:
+    # 基础信息
     - grain_id
     - area
     - centroid_x
@@ -11,10 +12,30 @@ grain_statistics_csv:
     - width
     - height
     - perimeter
+    
+    # 基本形状参数
     - circularity
     - aspect_ratio
+    - rectangularity
     - compactness
     - roundness
+    - convexity
+    
+    # Zingg 形状分类参数 (2D)
+    - EI_2d
+    - FI_2d
+    - AR_2d
+    
+    # 高级参数
+    - fractal_dimension
+    - angularity
+    
+    # 傅里叶描述符 (轮廓频域特征)
+    - D2_2d
+    - D3_2d
+    - D4_2d
+    
+    # 单位转换后的参数 (需要标尺检测)
     - area_um2
     - diameter_um
 
