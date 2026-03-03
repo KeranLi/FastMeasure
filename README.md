@@ -50,12 +50,13 @@ While segmenteverygrain pioneered the use of SAM for grain segmentation, FastMea
 
 **Minimum requirements (FastSAM only):**
 - Python 3.10+
-- PyTorch + Ultralytics
-- OpenCV, NumPy, Pandas
-- ~17 pip packages total
+- PyTorch >= 2.3.0 (supports NumPy 2.x)
+- Ultralytics, OpenCV, NumPy, Pandas
+- ~18 pip packages total
 
 **Optional (MobileSAM):**
-- MobileSAM from GitHub (see installation guide)
+- MobileSAM from GitHub
+- timm >= 0.9.0 (auto-installed with MobileSAM)
 
 See [Installation Guide](README-Installation.md) for detailed instructions.
 
@@ -125,12 +126,12 @@ conda env create -f envs/environment.yml
 # 3. Activate environment
 conda activate fastmeasure
 
-# 5. Prepare model files
+# 4. Prepare model files
 # Download from Google Drive (see Model Files section)
 # Then verify:
 python utils/download_models.py
 
-# 6. Run FastMeasure
+# 5. Run FastMeasure
 python run_fastsam.py --input your_image.jpg
 ```
 
@@ -214,8 +215,9 @@ python run_fastsam.py --help
     # Install other dependencies
     pip install opencv-python pandas matplotlib numpy pyyaml ultralytics>=8.2.0 shapely scikit-image pillow
     
-    # MobileSAM interactive mode requires additional installation
-    pip install mobile_sam
+    # MobileSAM (optional but recommended)
+    # Note: mobile_sam requires timm, which will be installed automatically
+    pip install git+https://github.com/ChaoningZhang/MobileSAM.git
     ```
 
 ## Model Files
