@@ -4,8 +4,12 @@ grain_statistics_csv:
 
   # 最终写入 grain_statistics.csv 的列（顺序就是输出顺序）
   keep_columns:
-    - label
+    - grain_id
     - area
+    - centroid_x
+    - centroid_y
+    - width
+    - height
     - perimeter
     - circularity
     - aspect_ratio

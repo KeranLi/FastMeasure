@@ -98,9 +98,10 @@ class RockUltraSystem:
         # Load configuration file
         self.config = self._load_config(config_path)
 
-        # Read geometry_config
+        # Read geometry_config - use absolute path based on project root
         try:
-            self.geometry_config = load_geometry_config("configs/geometry.yaml")
+            geometry_config_path = current_dir / "configs" / "geometry.yaml"
+            self.geometry_config = load_geometry_config(str(geometry_config_path))
             print("Geometry configuration loaded successfully")
         except Exception as e:
             self.geometry_config = {}

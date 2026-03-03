@@ -664,6 +664,9 @@ A: Modify the `yolo_confidence` parameter in the configuration file (smaller val
 **Q: Interactive mode cannot start GUI?**  
 A: Ensure the system has GUI support, or try setting the environment variable `MPLBACKEND=TkAgg`.
 
+**Q: Why isn't geometry.yaml affecting the output columns?**  
+A: This usually means `scikit-image` is not installed. The geometry module requires it. Install with: `pip install scikit-image`
+
 ## Change Log
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed update content of each project version.

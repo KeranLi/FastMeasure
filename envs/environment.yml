@@ -12,7 +12,7 @@ dependencies:
   - pyyaml
   - tqdm
   - opencv
-  - scikit-image
+  - scikit-image  # REQUIRED for geometry.yaml filtering
   - scikit-learn
   - shapely
   - rasterio

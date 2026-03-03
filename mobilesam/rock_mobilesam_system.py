@@ -22,6 +22,10 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
+# Add project root directory to system path to enable imports from project root
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 # Import core modules
 from .yolo_mobilesam import MobileSegmentationPipeline
 from .seg_tools import ImageProcessor, FileUtils, PerformanceMonitor
@@ -78,8 +82,9 @@ class RockMobileSystem:
         # Load configuration file
         self.config = self._load_config(config_path)
         
-        # New: Load geometry configuration
-        self.geometry_config = load_geometry_config("configs/geometry.yaml")
+        # New: Load geometry configuration - use absolute path based on project root
+        geometry_config_path = project_root / "configs" / "geometry.yaml"
+        self.geometry_config = load_geometry_config(str(geometry_config_path))
         
         # Set up unified output directory structure
         # results/{mode}/{type}/ (e.g., results/mobilesam/auto/)
