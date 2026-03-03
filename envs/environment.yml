@@ -24,3 +24,4 @@ dependencies:
   - pip:
     - ultralytics
     - segment-anything
+    - timm>=0.9.0  # Required by mobile_sam
