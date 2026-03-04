@@ -372,25 +372,40 @@ python run.py mobilesam --interactive
 |--------------|----------|
 | Left click | Add foreground point (segmentation target) |
 | Right click | Add background point (exclusion area) |
-| `X` | Delete last grain |
-| `D` | Delete all grains |
-| `S` | Save results |
-| `Shift+S` | Quick save complete results |
-| `C` | Clear all point marks |
-| `R` | Reset interface |
-| `M` | Manual scale calibration (measure known length) |
-| `H` | Show help |
-| `Q` | Quit |
+| `x` | Delete last grain |
+| `d` | Delete all grains |
+| `s` | Show save options menu |
+| `S` (Shift+S) | **Quick save complete results** |
+| `c` | Clear all point marks |
+| `r` | Reset interface |
+| `m` | Manual scale calibration (measure known length) |
+| `h` | Show help |
+| `q` | Quit |
+
+#### Save Options
+
+**Press `s` (lowercase):** Displays save options menu:
+1. **Quick save complete results** - Same as Shift+S
+2. **Custom save path** - Choose directory via file dialog
+3. **Cancel** - Return to segmentation
+
+**Press `S` (Shift+s):** Immediately saves all results without prompting:
+- Saves to `results/[mode]/interactive/[timestamp]/`
+- Includes all output files (see [Output File Guide](#output-file-guide))
+- Best for quick saving during segmentation
 
 #### Manual Scale Calibration
 
 When automatic scale bar detection fails, you can manually calibrate the scale:
 
-1. Press `M` key to enter scale calibration mode
+1. Press `m` key to enter scale calibration mode
 2. Click the **start point** of a known-length line (e.g., scale bar, ruler)
 3. Click the **end point** of the line
-4. Enter the **actual length in microns** when prompted
-5. The system will calculate and store the scale factor (um/px)
+4. Enter the **actual length in microns** in the input box at the bottom of the image
+5. Click **OK** or press **Enter** to confirm
+6. The system will calculate and store the scale factor (um/px)
+
+**Note:** The scale calibration input is now embedded in the matplotlib window (PyInstaller compatible) instead of a popup dialog.
 
 This allows you to use any known-length feature in the image for calibration.
 
@@ -561,11 +576,25 @@ After processing is complete, the system generates the following files in the ou
 | File Name | Description |
 |-----------|-------------|
 | `segmentation_result.png` | Segmentation result visualization (with grain contours) |
-| `segmentation_labeled.png` | Labeled result image (with grain numbers and areas) |
+| `segmentation_yolo_style.png` | YOLO-style side-by-side comparison (original + colored) |
+| `segmentation_labeled.png` | **Labeled result image with grain numbers** |
 | `segmentation_mask.png` | Binary segmentation mask image |
 | `grain_statistics.csv` | Grain statistics data table |
 | `summary.json` | Processing summary information (JSON format) |
 | `performance.json` | Performance statistics information |
+
+### Interactive Mode Output
+
+When using interactive mode and saving (press `s` or `Shift+S`), all files above are generated in:
+```
+results/[fastsam|mobilesam]/interactive/[image_name]_[timestamp]/
+```
+
+**Note on `segmentation_labeled.png`:**
+- Generated automatically when saving in interactive mode
+- Shows original image with grain number labels
+- Uses intelligent label placement to avoid overlap
+- Labels include grain ID numbers for easy reference
 
 ### Unified Output Directory Structure
 

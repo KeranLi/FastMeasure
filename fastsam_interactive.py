@@ -9,6 +9,17 @@ import sys
 import numpy as np
 import matplotlib
 
+# Helper function to get resource path (works for both dev and PyInstaller)
+def get_resource_path(relative_path):
+    """Get absolute path to resource, works for both dev and PyInstaller"""
+    if getattr(sys, 'frozen', False):
+        # Running in PyInstaller bundle
+        base_path = Path(sys._MEIPASS)
+    else:
+        # Running in normal Python environment
+        base_path = Path(__file__).parent
+    return base_path / relative_path
+
 def setup_backend():
     """Smart backend setup, prioritize GUI backends"""
     try:
@@ -100,6 +111,15 @@ except ImportError as e:
     GEOMETRY_AVAILABLE = False
     print(f"geometry module unavailable: {e}")
 
+# Import grain marker module for labeled visualization
+try:
+    from utils.grain_marker import add_grain_labels, add_labels_with_config
+    GRAIN_MARKER_AVAILABLE = True
+    print("Grain marker module loaded successfully")
+except ImportError as e:
+    GRAIN_MARKER_AVAILABLE = False
+    print(f"Grain marker module unavailable: {e}")
+
 try:
     from core.scale_calibration import InteractiveScaleCalibrator, quick_scale_calibration
     SCALE_CALIBRATION_AVAILABLE = True
@@ -163,17 +183,38 @@ class PureFastSAMInteractiveEnhanced:
         self.geometry_config = None
         if GEOMETRY_AVAILABLE:
             try:
-                # Modification: adjust config file path
-                config_path = Path(__file__).parent / "configs" / "geometry.yaml"
+                # First, ensure configs are available in working directory
+                configs_dir = Path("configs")
+                config_path = configs_dir / "geometry.yaml"
+                
+                # If not in working directory, try to copy from bundle
+                if not config_path.exists() and getattr(sys, 'frozen', False):
+                    import shutil
+                    bundle_configs = Path(sys._MEIPASS) / "configs"
+                    if bundle_configs.exists():
+                        configs_dir.mkdir(exist_ok=True)
+                        for yaml_file in bundle_configs.glob("*.yaml"):
+                            shutil.copy2(yaml_file, configs_dir / yaml_file.name)
+                        print(f"Copied configs from bundle to: {configs_dir}")
+                
+                # Now try to load geometry.yaml
                 if config_path.exists():
                     self.geometry_config = load_geometry_config(str(config_path))
-                    print("Geometry configuration loaded successfully")
+                    print(f"Geometry configuration loaded from: {config_path}")
                 else:
-                    # Try to find in fastsam subdirectory
-                    alt_config_path = Path(__file__).parent / "configs" / "geometry.yaml"
-                    if alt_config_path.exists():
-                        self.geometry_config = load_geometry_config(str(alt_config_path))
-                        print("Successfully loaded geometry configuration from fastsam subdirectory")
+                    # Try alternative paths
+                    alt_paths = [
+                        get_resource_path("configs/geometry.yaml"),
+                        get_resource_path("geometry.yaml"),
+                        Path(__file__).parent / "configs" / "geometry.yaml",
+                    ]
+                    for alt_path in alt_paths:
+                        if alt_path.exists():
+                            self.geometry_config = load_geometry_config(str(alt_path))
+                            print(f"Geometry configuration loaded from: {alt_path}")
+                            break
+                    else:
+                        print("Warning: Could not find geometry.yaml, using default CSV export")
             except Exception as e:
                 print(f"Failed to load geometry configuration: {e}")
         
@@ -188,6 +229,7 @@ class PureFastSAMInteractiveEnhanced:
         self.scale_calibrator = None
         self.is_scale_calibration_mode = False
         self.scale_factor = None
+        self.scale_detection_success = False
         if SCALE_CALIBRATION_AVAILABLE:
             self.scale_calibrator = InteractiveScaleCalibrator()
         
@@ -746,6 +788,7 @@ class PureFastSAMInteractiveEnhanced:
                 scale_factor = self.scale_calibrator.get_result()
                 if scale_factor:
                     self.scale_factor = scale_factor
+                    self.scale_detection_success = True
                     print(f"Scale calibration complete! Factor: {scale_factor:.4f} um/px")
                 self.is_scale_calibration_mode = False
                 # Restore title
@@ -910,54 +953,83 @@ class PureFastSAMInteractiveEnhanced:
     
     def _start_scale_calibration(self):
         """Start scale calibration mode"""
-        if not SCALE_CALIBRATION_AVAILABLE:
-            messagebox.showerror("Error", "Scale calibration module not available")
-            return
+        try:
+            print(f"Scale calibration available: {SCALE_CALIBRATION_AVAILABLE}")
             
-        if self.is_scale_calibration_mode:
-            print("Already in scale calibration mode")
-            return
-        
-        self.is_scale_calibration_mode = True
-        
-        print("\n" + "="*60)
-        print("SCALE CALIBRATION MODE")
-        print("="*60)
-        print("1. Click the START point of a known-length line")
-        print("2. Click the END point of the line")
-        print("3. Enter the actual length in microns when prompted")
-        print("Press 'Escape' to cancel")
-        print("="*60)
-        
-        self.scale_calibrator.calibrate_scale(self.image, self.ax, self.fig)
-        
-        # Update title
-        image_name = Path(self.image_path).name if self.image_path else "Unnamed"
-        self.ax.set_title(f"FastSAM Interactive - {image_name} [SCALE CALIBRATION - Click two points]", 
-                         fontsize=14, color='red', fontweight='bold')
-        self.fig.canvas.draw()
+            if not SCALE_CALIBRATION_AVAILABLE:
+                print("ERROR: Scale calibration module not available")
+                try:
+                    messagebox.showerror("Error", "Scale calibration module not available")
+                except Exception as e:
+                    print(f"Could not show messagebox: {e}")
+                return
+                
+            if self.is_scale_calibration_mode:
+                print("Already in scale calibration mode")
+                return
+            
+            if self.scale_calibrator is None:
+                print("ERROR: Scale calibrator is None")
+                return
+            
+            self.is_scale_calibration_mode = True
+            
+            print("\n" + "="*60)
+            print("SCALE CALIBRATION MODE")
+            print("="*60)
+            print("1. Click the START point of a known-length line")
+            print("2. Click the END point of the line")
+            print("3. Enter the actual length in microns when prompted")
+            print("Press 'Escape' to cancel")
+            print("="*60)
+            
+            self.scale_calibrator.calibrate_scale(self.image, self.ax, self.fig)
+            
+            # Update title
+            image_name = Path(self.image_path).name if self.image_path else "Unnamed"
+            self.ax.set_title(f"FastSAM Interactive - {image_name} [SCALE CALIBRATION - Click two points]", 
+                             fontsize=14, color='red', fontweight='bold')
+            self.fig.canvas.draw()
+        except Exception as e:
+            print(f"Error starting scale calibration: {e}")
+            import traceback
+            traceback.print_exc()
     
     def _on_key_press(self, event):
         """Handle keyboard press events"""
-        if event.key == 'x':  # Delete last grain
-            self._delete_last_grain()
-        elif event.key == 'd':  # Delete all grains
-            self._delete_all_grains()
-        elif event.key == 's':  # Save results
-            self._show_save_options()
-        elif event.key == 'r':  # Reset
-            self._reset_interface()
-        elif event.key == 'q':  # Quit
-            print("Exiting interactive interface")
-            self.gui_running = False
-            plt.close(self.fig)
-        elif event.key == 'h':  # Show help
-            self._show_help()
-        elif event.key == 'm':  # Manual scale calibration
-            self._start_scale_calibration()
-        elif event.key == 'S':  # Shift+S: Quick save complete results
-            print("Quick saving complete results...")
-            self._generate_complete_outputs()
+        try:
+            # Debug: print key press
+            print(f"Key pressed: {event.key}")
+            
+            if event.key == 'x':  # Delete last grain
+                print("Deleting last grain...")
+                self._delete_last_grain()
+            elif event.key == 'd':  # Delete all grains
+                print("Deleting all grains...")
+                self._delete_all_grains()
+            elif event.key == 's':  # Save results
+                print("Showing save options...")
+                self._show_save_options()
+            elif event.key == 'r':  # Reset
+                print("Resetting interface...")
+                self._reset_interface()
+            elif event.key == 'q':  # Quit
+                print("Exiting interactive interface")
+                self.gui_running = False
+                plt.close(self.fig)
+            elif event.key == 'h':  # Show help
+                print("Showing help...")
+                self._show_help()
+            elif event.key == 'm':  # Manual scale calibration
+                print("Starting scale calibration...")
+                self._start_scale_calibration()
+            elif event.key == 'S':  # Shift+S: Quick save complete results
+                print("Quick saving complete results...")
+                self._generate_complete_outputs()
+        except Exception as e:
+            print(f"Error in key press handler: {e}")
+            import traceback
+            traceback.print_exc()
     
     def _delete_last_grain(self):
         """Delete last grain"""
@@ -1346,6 +1418,27 @@ class PureFastSAMInteractiveEnhanced:
                 print("Cannot generate grain data")
                 return None
             
+            # Calculate area_um2 and diameter_um if scale calibration was successful
+            print(f"Scale detection success: {self.scale_detection_success}, scale factor: {self.scale_factor}")
+            
+            if self.scale_detection_success and self.scale_factor and self.scale_factor > 0:
+                if 'area' in self.grain_data.columns:
+                    self.grain_data['area'] = pd.to_numeric(self.grain_data['area'], errors='coerce')
+                    
+                    # Calculate area_um2 and diameter_um for all rows
+                    self.grain_data['area_um2'] = self.grain_data['area'] * (self.scale_factor ** 2)
+                    self.grain_data['diameter_um'] = 2 * np.sqrt(self.grain_data['area_um2'] / np.pi)
+                    
+                    # Check for NaN values
+                    valid_count = self.grain_data['area_um2'].notna().sum()
+                    print(f"Calculated area_um2 and diameter_um for {valid_count} grains (scale factor: {self.scale_factor:.4f} um/px)")
+                    print(f"Sample area_um2: {self.grain_data['area_um2'].iloc[0] if valid_count > 0 else 'N/A'}")
+                else:
+                    print("Warning: 'area' column not found in grain_data")
+            else:
+                print("Warning: No scale calibration performed. area_um2 and diameter_um not calculated.")
+                print("         Press 'M' key and measure a known length before saving.")
+            
             print(f"Grain data contains {len(self.grain_data.columns)} parameters")
             
             # 3. Save interactive interface screenshot
@@ -1389,6 +1482,9 @@ class PureFastSAMInteractiveEnhanced:
                 plt.close(fig)
                 
                 print(f"YOLO-style visualization saved to: {plot_path}")
+                
+                # 4.5 Save labeled visualization with grain numbers
+                self._generate_labeled_visualization(output_dir)
             
             # 5. SaveCSVfile
             if not self.grain_data.empty:
@@ -1445,6 +1541,75 @@ class PureFastSAMInteractiveEnhanced:
             print(f"Failed to generate complete output: {e}")
             traceback.print_exc()
             return None
+    
+    def _generate_labeled_visualization(self, output_dir: Path):
+        """Generate labeled visualization with grain numbers"""
+        try:
+            if not GRAIN_MARKER_AVAILABLE or self.grain_data is None or self.grain_data.empty:
+                print("Grain marker not available or no grain data, skipping labeled visualization")
+                return
+            
+            # Prepare grain data with required columns for add_labels_with_config
+            # It expects: 'label', 'centroid-0', 'centroid-1', 'area'
+            label_data = self.grain_data.copy()
+            
+            # Map column names to what add_labels_with_config expects
+            if 'grain_id' in label_data.columns:
+                label_data['label'] = label_data['grain_id']
+            if 'centroid_y' in label_data.columns:
+                label_data['centroid-0'] = label_data['centroid_y']  # y coordinate (row)
+            if 'centroid_x' in label_data.columns:
+                label_data['centroid-1'] = label_data['centroid_x']  # x coordinate (column)
+            
+            print(f"Label data columns: {list(label_data.columns)}")
+            print(f"Sample label data: {label_data[['label', 'centroid-0', 'centroid-1', 'area']].head() if all(c in label_data.columns for c in ['label', 'centroid-0', 'centroid-1', 'area']) else 'Missing columns'}")
+            
+            # Create labeled image
+            fig_labeled, ax_labeled = plt.subplots(figsize=(15, 10))
+            ax_labeled.imshow(self.image)
+            ax_labeled.axis('off')
+            
+            # Add grain labels
+            grain_label_config = {
+                'enabled': True,
+                'font_size': 11,
+                'font_color': 'white',
+                'bbox_color': 'black',
+                'bbox_alpha': 0.6,
+                'bbox_style': 'round,pad=0.3',
+                'label_format': 'id',
+                'placement_strategy': 'auto',
+                'seed': 42,
+                'avoid_overlap': True,
+                'min_distance': 10
+            }
+            
+            ax_labeled = add_labels_with_config(
+                ax=ax_labeled,
+                grain_data=label_data,
+                image_shape=self.image.shape,
+                config=grain_label_config
+            )
+            
+            # Hide axes and borders
+            ax_labeled.set_xticks([])
+            ax_labeled.set_yticks([])
+            ax_labeled.set_xlim([0, self.image.shape[1]])
+            ax_labeled.set_ylim([self.image.shape[0], 0])
+            plt.tight_layout()
+            
+            # Save labeled image
+            labeled_path = output_dir / "segmentation_labeled.png"
+            fig_labeled.savefig(labeled_path, dpi=300, bbox_inches='tight', 
+                               pad_inches=0, facecolor='white')
+            plt.close(fig_labeled)
+            
+            print(f"Labeled visualization saved to: {labeled_path}")
+            
+        except Exception as e:
+            print(f"Failed to generate labeled visualization: {e}")
+            import traceback
+            traceback.print_exc()
     
     def _show_save_options(self):
         """Show save options"""

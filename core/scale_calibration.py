@@ -7,9 +7,10 @@ Function: Provide manual scale calibration by measuring line segments in images
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from matplotlib.widgets import TextBox, Button
 from typing import Optional, Tuple, Callable
 import tkinter as tk
-from tkinter import simpledialog, messagebox
+from tkinter import messagebox
 
 
 class InteractiveScaleCalibrator:
@@ -149,31 +150,132 @@ class InteractiveScaleCalibrator:
             self.temp_line = line
     
     def _ask_actual_length(self, pixel_distance: float):
-        """Ask user for actual length and calculate scale factor"""
+        """Ask user for actual length using matplotlib widgets (PyInstaller compatible)
+        
+        Note: This method does NOT block - it uses matplotlib's event system.
+        The callback will be called when user clicks OK.
+        """
         try:
-            # Create dialog
-            root = tk.Tk()
-            root.withdraw()
-            root.attributes('-topmost', True)
+            # Get current figure and axes
+            fig = plt.gcf()
+            ax = plt.gca()
             
-            actual_length = simpledialog.askfloat(
-                "Enter Actual Length",
-                f"Measured pixel distance: {pixel_distance:.2f} pixels\n\n"
-                f"Enter the actual length in microns (um):",
-                minvalue=0.1,
-                initialvalue=1000.0
-            )
+            # Store widget references for cleanup
+            self._widget_axes = []
+            self._widgets = []
             
-            root.destroy()
+            # Adjust subplot to make room for widgets
+            fig.subplots_adjust(bottom=0.25)
             
-            if actual_length is None:
+            # Create axes for label, input box and buttons
+            label_ax = fig.add_axes([0.15, 0.05, 0.7, 0.06])
+            label_ax.axis('off')
+            label_text = label_ax.text(0.5, 0.5, 
+                f'Measured: {pixel_distance:.2f} pixels. Enter actual length (microns):',
+                ha='center', va='center', fontsize=11, fontweight='bold',
+                transform=label_ax.transAxes, color='darkblue')
+            self._widget_axes.append(label_ax)
+            
+            # TextBox for input
+            textbox_ax = fig.add_axes([0.35, 0.11, 0.3, 0.06])
+            text_box = TextBox(textbox_ax, '', initial='1000')
+            self._widget_axes.append(textbox_ax)
+            self._widgets.append(('textbox', text_box))
+            
+            # Button axes
+            ok_ax = fig.add_axes([0.38, 0.02, 0.1, 0.05])
+            cancel_ax = fig.add_axes([0.52, 0.02, 0.1, 0.05])
+            self._widget_axes.extend([ok_ax, cancel_ax])
+            
+            # Store references for cleanup
+            self._pixel_distance = pixel_distance
+            
+            def cleanup_widgets():
+                """Remove all widget axes and restore layout"""
+                # First deactivate widgets to stop event processing
+                for widget_type, widget in self._widgets:
+                    try:
+                        if widget_type == 'textbox':
+                            widget.set_active(False)
+                    except:
+                        pass
+                
+                # Disconnect button callbacks before removing axes
+                try:
+                    ok_btn.disconnect(ok_btn_cid)
+                except:
+                    pass
+                try:
+                    cancel_btn.disconnect(cancel_btn_cid)
+                except:
+                    pass
+                
+                # Remove axes
+                for widget_ax in self._widget_axes:
+                    try:
+                        widget_ax.remove()
+                    except:
+                        pass
+                
+                self._widget_axes = []
+                self._widgets = []
+                fig.subplots_adjust(bottom=0.1)
+                fig.canvas.draw()
+            
+            def on_ok(event=None):
+                try:
+                    val = float(text_box.text)
+                    if val <= 0:
+                        raise ValueError("Value must be positive")
+                    
+                    # Clean up widgets first
+                    cleanup_widgets()
+                    
+                    # Calculate and store result
+                    self._complete_calibration(val, pixel_distance)
+                    
+                except ValueError as e:
+                    label_text.set_text(f'Invalid input: {e}. Please enter a positive number.')
+                    try:
+                        label_ax.figure.canvas.draw()
+                    except:
+                        pass
+            
+            def on_cancel(event=None):
+                cleanup_widgets()
                 print("Scale calibration cancelled by user")
                 self.reset_calibration()
-                return
             
+            def on_submit(text):
+                on_ok()
+            
+            ok_btn = Button(ok_ax, 'OK', color='lightgreen', hovercolor='green')
+            cancel_btn = Button(cancel_ax, 'Cancel', color='lightcoral', hovercolor='red')
+            
+            ok_btn_cid = ok_btn.on_clicked(on_ok)
+            cancel_btn_cid = cancel_btn.on_clicked(on_cancel)
+            text_box.on_submit(on_submit)
+            
+            # Focus the text box
+            text_box.set_active(True)
+            fig.canvas.draw()
+            
+            # Note: We do NOT block here - the event loop is already running
+            # The callback will be triggered when user clicks OK
+                
+        except Exception as e:
+            print(f"Error during scale calibration: {e}")
+            import traceback
+            traceback.print_exc()
+            self.reset_calibration()
+    
+    def _complete_calibration(self, actual_length: float, pixel_distance: float):
+        """Complete the calibration process with the provided actual length"""
+        try:
             # Calculate scale factor (um/pixel)
             scale_factor = actual_length / pixel_distance
             self.result = scale_factor
+            self.is_calibrating = False
             
             print(f"Scale calibration completed!")
             print(f"  Pixel distance: {pixel_distance:.2f} px")
@@ -181,21 +283,39 @@ class InteractiveScaleCalibrator:
             print(f"  Scale factor: {scale_factor:.4f} um/px")
             print(f"  (1 pixel = {scale_factor:.4f} microns)")
             
-            # Show confirmation
-            messagebox.showinfo(
-                "Calibration Complete",
-                f"Scale factor calculated: {scale_factor:.4f} um/px\n\n"
-                f"This means:\n"
-                f"  1 pixel = {scale_factor:.4f} microns\n"
-                f"  1 micron = {1/scale_factor:.4f} pixels"
-            )
+            # Show confirmation using tkinter messagebox (this works in PyInstaller)
+            try:
+                # Try to use existing tkinter root if available
+                root = tk._default_root
+                if root is None:
+                    root = tk.Tk()
+                    root.withdraw()
+                    created_root = True
+                else:
+                    created_root = False
+                
+                messagebox.showinfo(
+                    "Calibration Complete",
+                    f"Scale factor calculated: {scale_factor:.4f} um/px\n\n"
+                    f"This means:\n"
+                    f"  1 pixel = {scale_factor:.4f} microns\n"
+                    f"  1 micron = {1/scale_factor:.4f} pixels"
+                )
+                
+                if created_root:
+                    root.destroy()
+            except Exception as e:
+                # If messagebox fails, just print to console
+                print(f"Calibration complete! Scale factor: {scale_factor:.4f} um/px")
             
             # Call callback if provided
             if self.callback:
                 self.callback(scale_factor)
                 
         except Exception as e:
-            print(f"Error during scale calibration: {e}")
+            print(f"Error completing calibration: {e}")
+            import traceback
+            traceback.print_exc()
             self.reset_calibration()
     
     def reset_calibration(self):
