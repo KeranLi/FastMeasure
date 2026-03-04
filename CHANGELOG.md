@@ -4,9 +4,74 @@ All development progress, feature updates and architecture changes of this proje
 
 ---
 
+## 2026-03-04 - Scale Calibration Fix & Labeled Image Export (Latest)
+
+- **Modifier:** Keran Li
+- **Modification Type:** Bug Fix + Feature Enhancement
+- **Involved Files:** `core/scale_calibration.py`, `mobilesam_interactive.py`, `fastsam_interactive.py`, `application/build_exe.py`, `utils/gui_launcher.py`
+
+### Problem 1: Scale Calibration Crash in Packaged EXE
+In PyInstaller `--windowed` mode, scale calibration dialog crashed with:
+```
+Error during scale calibration: window ".!_queryfloat" was deleted before its visibility changed
+```
+
+**Root Cause:**
+- `tkinter.simpledialog.askfloat` requires a Tk root window that conflicts with matplotlib's embedded tkinter
+- Creating new `tk.Tk()` in PyInstaller windowed mode causes window management issues
+
+### Solution 1: Matplotlib Widgets for Scale Calibration
+Replaced tkinter simpledialog with matplotlib widgets:
+- Uses `matplotlib.widgets.TextBox` and `Button` for input
+- Embeds input panel directly in the figure (bottom 25%)
+- Non-blocking: Uses existing matplotlib event loop
+- Added proper widget cleanup to prevent canvas access errors
+
+**Files Modified:**
+- `core/scale_calibration.py`: Complete rewrite of `_ask_actual_length()` method
+- `mobilesam_interactive.py`: Added callback-based completion handling
+- `application/build_exe.py`: Added `--hidden-import matplotlib.widgets`
+
+### Problem 2: Missing `segmentation_labeled.png` in Interactive Mode
+Interactive mode was not generating labeled images with grain numbers.
+
+### Solution 2: Added Labeled Visualization Export
+Added `_generate_labeled_visualization()` method to both interactive scripts:
+- Generates `segmentation_labeled.png` with grain number labels
+- Uses `utils.grain_marker.add_labels_with_config()` for intelligent label placement
+- Fixed column name mapping (`grain_id` → `label`, `centroid_x/y` → `centroid-0/1`)
+- Saved when pressing `Shift+S` or selecting "Quick save" from `s` menu
+
+### Problem 3: Config File Loading in Packaged EXE
+In packaged executable, `area_um2` and `diameter_um` columns were missing from CSV output in Interactive mode.
+
+**Root Cause:**
+- `geometry.yaml` config file was not being found in PyInstaller bundle
+- Config files in `_internal/configs/` were not accessible to interactive scripts
+
+### Solution 3: Config File Copy on Startup
+Implemented `ensure_configs_available()` in `utils/gui_launcher.py`:
+- Copies config files from PyInstaller bundle to working directory on startup
+- Ensures consistent config loading in both dev and packaged environments
+
+### Interactive Mode Keyboard Shortcuts Update
+| Key | Function |
+|-----|----------|
+| `s` | Show save options menu (1. Quick save / 2. Custom path / 3. Cancel) |
+| `S` (Shift+s) | **Quick save all results** including labeled image |
+
+### Result
+- Scale calibration now works correctly in packaged executable
+- Interactive mode exports `segmentation_labeled.png` with grain numbers
+- All CSV columns including `area_um2` and `diameter_um` are correctly saved
+- Improved widget cleanup prevents matplotlib canvas errors
+
+
+---
+
 ## 2026-03-02 - Fixed PyInstaller EXE Packaging
 
-- **Modifier:** AI Assistant
+- **Modifier:** Keran Li
 - **Modification Type:** Bug Fix
 - **Involved Files:** `run.py` (new), `utils/gui_launcher.py`, `application/build_exe.py`
 
@@ -61,23 +126,48 @@ Changed from subprocess-based execution to direct function calls with full featu
 #### 3. Updated `build_exe.py`
 - **Removed** `installer.iss` generation (user can create manually if needed)
 - **Created** `hooks/` directory for PyInstaller hook files
-- Added missing hidden imports:
+- Added missing hidden imports including tkinter submodules for interactive mode:
 - Core modules: `core.segment_core`
 - Geometry modules: `geometry.grain_metric`, `geometry.config_loader`, `geometry.export_csv`
 - FastSAM modules: `fastsam.rock_fastsam_system`, `fastsam.yolo_fastsam`, `fastsam.seg_engine`
 - MobileSAM modules: `mobilesam.rock_mobilesam_system`, `mobilesam.yolo_mobilesam`, `mobilesam.mobile_sam_engine`
 - Additional dependencies: `sklearn.cluster`, `skimage.measure`, `skimage.morphology`, `scipy.spatial`, `shapely.geometry`, `timm`
+- **Added** tkinter submodules: `tkinter.messagebox`, `tkinter.filedialog`, `tkinter.commondialog`
+
+#### 4. Fixed Interactive Mode Keyboard Shortcuts
+- **Problem**: In packaged exe, 'x' key (delete grain) and 'm' key (scale calibration) not working
+- **Cause**: 
+  - Missing tkinter submodules in PyInstaller
+  - Lack of error handling in key press handlers
+- **Fixes**:
+  - Added `tkinter.messagebox` and other tkinter submodules to hidden imports
+  - Added try-except blocks in `_on_key_press` methods
+  - Added debug print statements to diagnose key press issues
+  - Enhanced `_start_scale_calibration` with better error handling
+- **Files Modified**: `fastsam_interactive.py`, `mobilesam_interactive.py`, `build_exe.py`
 
 ### Result
 - Packaged executable works identically to Python scripts
 - GUI launcher correctly initializes systems directly
 - `run.py` provides unified CLI without duplicating code
+- Interactive mode keyboard shortcuts work correctly in packaged exe
+
+#### 5. Fixed Missing area_um2 and diameter_um in Interactive Mode CSV
+- **Problem**: In Interactive mode, CSV output was missing `area_um2` and `diameter_um` columns even after scale calibration
+- **Root Cause**: 
+  - `fastsam_interactive.py` was not calculating these columns after scale calibration
+  - `fastsam_interactive.py` was missing `scale_detection_success` attribute
+- **Fixes**:
+  - Added `scale_detection_success` attribute to `fastsam_interactive.py` (initialized to False, set to True after calibration)
+  - Added calculation of `area_um2` and `diameter_um` in `_generate_complete_outputs` method when scale calibration is successful
+  - Modified condition to check `scale_detection_success` instead of just `scale_factor`
+- **Files Modified**: `fastsam_interactive.py`
 
 ---
 
 ## 2026-03-02 - Full Geometry Parameter Support
 
-- **Modifier:** AI Assistant
+- **Modifier:** Keran Li
 - **Modification Type:** Feature Enhancement + Bug Fix
 - **Involved Files:** `geometry/grain_metric.py`, `mobilesam_interactive.py`, `fastsam_interactive_macos.py`, `mobilesam_interactive_macos.py`, `mobilesam/yolo_mobilesam.py`, `configs/geometry.yaml`, `README.md`
 

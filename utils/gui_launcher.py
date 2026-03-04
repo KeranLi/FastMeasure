@@ -41,7 +41,7 @@ def get_resource_path(relative_path):
     
     if getattr(sys, 'frozen', False):
         # Running in PyInstaller bundle
-        # sys._MEIPASS is the temp extraction directory
+        # sys._MEIPASS is the temp extraction directory (_internal folder)
         possible_paths.append(Path(sys._MEIPASS) / relative_path)
         # Also try the executable's directory
         possible_paths.append(Path(sys.executable).parent / relative_path)
@@ -64,6 +64,32 @@ def get_resource_path(relative_path):
     return possible_paths[0]
 
 
+def ensure_configs_available():
+    """Ensure config files are available in the working directory.
+    In PyInstaller, copy configs from _internal to working directory if needed."""
+    configs_dir = Path("configs")
+    
+    # If configs already exists in working directory, use it
+    if configs_dir.exists() and (configs_dir / "geometry.yaml").exists():
+        return configs_dir
+    
+    # Try to find configs in PyInstaller bundle
+    if getattr(sys, 'frozen', False):
+        source_configs = Path(sys._MEIPASS) / "configs"
+        if source_configs.exists():
+            # Copy configs to working directory
+            import shutil
+            configs_dir.mkdir(exist_ok=True)
+            for config_file in source_configs.glob("*.yaml"):
+                dest = configs_dir / config_file.name
+                if not dest.exists():
+                    shutil.copy2(config_file, dest)
+                    print(f"Copied config: {config_file.name}")
+            return configs_dir
+    
+    return configs_dir
+
+
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -78,6 +104,9 @@ class FastMeasureGUI:
         self.root.title("FastMeasure - Rock Grain Segmentation")
         self.root.geometry("800x700")
         self.root.minsize(700, 600)
+        
+        # Ensure configs are available (important for PyInstaller)
+        ensure_configs_available()
         
         # Set icon if available
         try:
@@ -394,9 +423,12 @@ class FastMeasureGUI:
         from fastsam.rock_fastsam_system import RockUltraSystem
         from core import update_config_from_args, print_summary
         
+        # Ensure configs are available and get configs directory
+        configs_dir = ensure_configs_available()
+        
         # Set device in config
         import yaml
-        config_path = get_resource_path("configs/fastsam.yaml")
+        config_path = configs_dir / "fastsam.yaml"
         with open(config_path, 'r') as f:
             config = yaml.safe_load(f)
         config['model_paths']['device'] = device
@@ -461,6 +493,15 @@ class FastMeasureGUI:
         if Path(input_path).is_file():
             print(f"\nProcessing single image: {input_path}")
             results = system.process_single_image(input_path)
+            
+            # Check scale detection status
+            if results and results.get('scale_detection_success'):
+                print(f"✓ Scale detection successful: {results.get('scale_factor', 'N/A')} μm/px")
+                print(f"  - area_um2 and diameter_um calculated")
+            else:
+                print("⚠ Scale detection failed or disabled")
+                print("  - area_um2 and diameter_um not available")
+                print("  - Check if image has red scale bar at bottom-right corner")
         elif Path(input_path).is_dir():
             if mode == "batch":
                 print(f"\nBatch processing folder: {input_path}")
@@ -491,9 +532,12 @@ class FastMeasureGUI:
         
         from core import print_summary
         
+        # Ensure configs are available and get configs directory
+        configs_dir = ensure_configs_available()
+        
         # Set device in config
         import yaml
-        config_path = get_resource_path("configs/mobilesam.yaml")
+        config_path = configs_dir / "mobilesam.yaml"
         with open(config_path, 'r') as f:
             config = yaml.safe_load(f)
         config['model_paths']['device'] = device
@@ -562,6 +606,16 @@ class FastMeasureGUI:
         if input_path.is_file():
             print(f"\nProcessing single image: {input_path}")
             results = system.process_single_image(str(input_path))
+            
+            # Check scale detection status
+            if results and results.get('scale_detection_success'):
+                print(f"✓ Scale detection successful: {results.get('scale_factor', 'N/A')} μm/px")
+                print(f"  - area_um2 and diameter_um calculated")
+            else:
+                print("⚠ Scale detection failed or disabled")
+                print("  - area_um2 and diameter_um not available")
+                print("  - Check if image has red scale bar at bottom-right corner")
+            
             if results:
                 print_summary(results, "MobileSAM")
         elif input_path.is_dir():

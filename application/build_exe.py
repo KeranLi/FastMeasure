@@ -127,6 +127,12 @@ def build_executable():
         "--hidden-import", "core.seg_optimize",
         "--hidden-import", "core.yolo_trainer",
         "--hidden-import", "core.segment_core",
+        # Hidden imports for utils modules (required for scale detection)
+        "--hidden-import", "utils",
+        "--hidden-import", "utils.scale_detector",
+        "--hidden-import", "utils.grain_marker",
+        "--hidden-import", "utils.file_dialog",
+        "--hidden-import", "utils.download_models",
         # Hidden imports for geometry modules
         "--hidden-import", "geometry",
         "--hidden-import", "geometry.grain_metric",
@@ -164,6 +170,7 @@ def build_executable():
         "--hidden-import", "shapely.geometry",
         "--hidden-import", "matplotlib",
         "--hidden-import", "matplotlib.backends.backend_tkagg",
+        "--hidden-import", "matplotlib.widgets",
         "--hidden-import", "segment_anything",
         "--hidden-import", "mobile_sam",
         "--hidden-import", "timm",
@@ -171,6 +178,19 @@ def build_executable():
         "--hidden-import", "unittest",
         "--hidden-import", "unittest.mock",
         "--hidden-import", "pyparsing",
+        "--hidden-import", "urllib",
+        "--hidden-import", "urllib.parse",
+        "--hidden-import", "urllib.request",
+        # tkinter submodules (required for interactive mode)
+        "--hidden-import", "tkinter.messagebox",
+        "--hidden-import", "tkinter.filedialog",
+        "--hidden-import", "tkinter.commondialog",
+        # Hidden imports for OpenCV (required by scale_detector)
+        "--hidden-import", "cv2",
+        "--hidden-import", "cv2.cv2",
+        "--hidden-import", "numpy",
+        "--hidden-import", "numpy.core",
+        "--hidden-import", "numpy.core._dtype",
                         # Collect all packages
         "--collect-all", "ultralytics",
         "--collect-all", "torch",
